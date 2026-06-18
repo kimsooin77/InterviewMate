@@ -8,7 +8,7 @@
       </div>
     </el-header>
     <el-main class="app-layout__main">
-      <slot />
+      <router-view />
     </el-main>
   </el-container>
 </template>

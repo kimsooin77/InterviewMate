@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import type { RouteRecordRaw } from 'vue-router';
 import { authGuard } from './guards';
+import AppLayout from '@/shared/ui/AppLayout.vue';
 
 const routes: RouteRecordRaw[] = [
   {
@@ -17,7 +18,24 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/',
-    redirect: '/login',
+    component: AppLayout,
+    meta: { requiresAuth: true },
+    children: [
+      {
+        path: '',
+        redirect: '/resumes/upload',
+      },
+      {
+        path: 'resumes/upload',
+        name: 'ResumeUpload',
+        component: () => import('@/pages/ResumeUploadPage.vue'),
+      },
+      {
+        path: 'resumes/:id',
+        name: 'ResumeDetail',
+        component: () => import('@/pages/ResumeDetailPage.vue'),
+      },
+    ],
   },
 ];
 
