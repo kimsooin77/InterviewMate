@@ -1,13 +1,31 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import type { RouteRecordRaw } from 'vue-router';
+import { authGuard } from './guards';
 
 const routes: RouteRecordRaw[] = [
-  // Phase 1-3에서 Auth 라우트 추가 예정
+  {
+    path: '/login',
+    name: 'Login',
+    component: () => import('@/pages/LoginPage.vue'),
+    meta: { guestOnly: true },
+  },
+  {
+    path: '/signup',
+    name: 'Signup',
+    component: () => import('@/pages/SignupPage.vue'),
+    meta: { guestOnly: true },
+  },
+  {
+    path: '/',
+    redirect: '/login',
+  },
 ];
 
 const router = createRouter({
   history: createWebHistory(),
   routes,
 });
+
+router.beforeEach(authGuard);
 
 export default router;
