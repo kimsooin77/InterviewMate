@@ -172,7 +172,64 @@ modules/{module-name}/
 
 ---
 
-## 8. 응답 형식
+## 8. Git Workflow
+
+### 브랜치 전략
+
+| 브랜치 | 용도 |
+|--------|------|
+| `main` | 항상 배포 가능한 상태 유지 |
+| `dev` | 통합 개발 브랜치 |
+| `feature/*` | 기능 단위 개발 브랜치 |
+
+### 브랜치 명명 규칙
+
+```
+feature/project-setup
+feature/auth
+feature/resume-upload
+feature/question-generation
+feature/interview-session
+feature/evaluation
+feature/report
+```
+
+### 브랜치 규칙
+
+- 모든 기능 개발은 `feature` 브랜치에서 진행한다
+- `feature` 브랜치 완료 후 `dev`로 Merge한다
+- 충분한 검증 후 `dev`를 `main`으로 Merge한다
+- 직접 `main` 브랜치에서 개발하지 않는다
+- 브랜치 이름에 버전 번호를 사용하지 않는다
+
+### Commit 규칙
+
+| Prefix | 용도 |
+|--------|------|
+| `feat:` | 새로운 기능 추가 |
+| `fix:` | 버그 수정 |
+| `refactor:` | 리팩토링 |
+| `docs:` | 문서 변경 |
+| `test:` | 테스트 추가/수정 |
+| `chore:` | 빌드, 설정 등 기타 변경 |
+
+**예시**
+
+```
+feat(auth): implement signup api
+feat(resume): add pdf upload
+fix(interview): resolve session state bug
+```
+
+### PR 규칙
+
+- 혼자 개발하더라도 Pull Request 생성 후 Merge한다
+- PR Description에 구현 내용을 작성한다
+- Merge 전 Self Review를 수행한다
+
+---
+
+## 9. 응답 형식
 
 ### 구현 요청 시
 
