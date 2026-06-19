@@ -6,6 +6,7 @@ import { Evaluation } from './entities/evaluation.entity';
 import { EvaluationItem } from './entities/evaluation-item.entity';
 import { InterviewSession } from '../interview/entities/interview-session.entity';
 import { InterviewAnswer } from '../interview/entities/interview-answer.entity';
+import { ReportModule } from '../report/report.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { InterviewAnswer } from '../interview/entities/interview-answer.entity';
       InterviewSession,
       InterviewAnswer,
     ]),
+    ReportModule,
   ],
   controllers: [EvaluationController],
   providers: [EvaluationService],

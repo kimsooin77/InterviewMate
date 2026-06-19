@@ -15,6 +15,7 @@ import { InterviewAnswer } from '../interview/entities/interview-answer.entity';
 import { CreateEvaluationDto } from './dto/create-evaluation.dto';
 import { EvaluationResponseDto } from './dto/evaluation-response.dto';
 import { EvaluationItemResponseDto } from './dto/evaluation-item-response.dto';
+import { ReportService } from '../report/report.service';
 import { getOpenAIConfig } from '../../config/openai.config';
 
 @Injectable()
@@ -33,6 +34,7 @@ export class EvaluationService {
     @InjectRepository(InterviewAnswer)
     private readonly answerRepository: Repository<InterviewAnswer>,
     private readonly configService: ConfigService,
+    private readonly reportService: ReportService,
   ) {
     const openaiConfig = getOpenAIConfig(configService);
     this.openai = new OpenAI({ apiKey: openaiConfig.apiKey });
@@ -106,6 +108,8 @@ export class EvaluationService {
     );
 
     const savedItems = await this.evaluationItemRepository.save(items);
+
+    await this.reportService.generateReport(dto.sessionId);
 
     return this.toResponse(savedEvaluation, savedItems, answers);
   }
