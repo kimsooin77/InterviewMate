@@ -45,6 +45,11 @@ const routes: RouteRecordRaw[] = [
         name: 'QuestionPreview',
         component: () => import('@/pages/QuestionPreviewPage.vue'),
       },
+      {
+        path: 'interviews/start/:questionSetId',
+        name: 'Interview',
+        component: () => import('@/pages/InterviewPage.vue'),
+      },
     ],
   },
 ];
