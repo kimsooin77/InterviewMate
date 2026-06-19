@@ -23,6 +23,7 @@ export class EvaluationService {
   private readonly openai: OpenAI;
   private readonly openaiModel: string;
   private readonly openaiTemperature: number;
+  private readonly useMockAI: boolean;
 
   constructor(
     @InjectRepository(Evaluation)
@@ -40,6 +41,7 @@ export class EvaluationService {
     this.openai = new OpenAI({ apiKey: openaiConfig.apiKey });
     this.openaiModel = openaiConfig.model;
     this.openaiTemperature = openaiConfig.temperature;
+    this.useMockAI = configService.get<string>('USE_MOCK_AI', 'false') === 'true';
   }
 
   async create(
@@ -76,11 +78,13 @@ export class EvaluationService {
       order: { questionId: 'ASC' },
     });
 
-    const evaluationResults = await Promise.all(
-      answers.map((answer) =>
-        this.callOpenAIEvaluation(answer.question.content, answer.content),
-      ),
-    );
+    const evaluationResults = this.useMockAI
+      ? answers.map(() => this.getMockEvaluationResult())
+      : await Promise.all(
+          answers.map((answer) =>
+            this.callOpenAIEvaluation(answer.question.content, answer.content),
+          ),
+        );
 
     const overallScore = Math.round(
       evaluationResults.reduce((sum, r) => sum + r.totalScore, 0) /
@@ -184,6 +188,28 @@ export class EvaluationService {
       overallScore: evaluation.overallScore,
       evaluations: itemResponses,
       createdAt: evaluation.createdAt,
+    };
+  }
+
+  private getMockEvaluationResult(): {
+    scores: { accuracy: number; depth: number; structure: number; communication: number };
+    totalScore: number;
+    feedback: string;
+    strengths: string[];
+    improvements: string[];
+  } {
+    const accuracy = 70 + Math.floor(Math.random() * 20);
+    const depth = 65 + Math.floor(Math.random() * 25);
+    const structure = 70 + Math.floor(Math.random() * 20);
+    const communication = 75 + Math.floor(Math.random() * 15);
+    const totalScore = Math.round((accuracy + depth + structure + communication) / 4);
+
+    return {
+      scores: { accuracy, depth, structure, communication },
+      totalScore,
+      feedback: '핵심 개념을 잘 이해하고 있으며, 실무 경험을 바탕으로 구체적인 답변을 제공했습니다. 더 깊이 있는 사례와 비교 분석이 추가되면 좋겠습니다.',
+      strengths: ['핵심 개념에 대한 정확한 이해', '논리적인 답변 구조'],
+      improvements: ['실무 사례 보강 필요', '성능 관점의 분석 추가'],
     };
   }
 

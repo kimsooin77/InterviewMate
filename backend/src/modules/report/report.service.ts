@@ -19,6 +19,7 @@ export class ReportService {
   private readonly openai: OpenAI;
   private readonly openaiModel: string;
   private readonly openaiTemperature: number;
+  private readonly useMockAI: boolean;
 
   constructor(
     @InjectRepository(Report)
@@ -35,6 +36,7 @@ export class ReportService {
     this.openai = new OpenAI({ apiKey: openaiConfig.apiKey });
     this.openaiModel = openaiConfig.model;
     this.openaiTemperature = openaiConfig.temperature;
+    this.useMockAI = configService.get<string>('USE_MOCK_AI', 'false') === 'true';
   }
 
   async generateReport(sessionId: number): Promise<Report> {
@@ -69,12 +71,14 @@ export class ReportService {
       )
       .join('\n\n---\n\n');
 
-    const aiResult = await this.callOpenAIReportGeneration(
-      session.difficulty,
-      session.totalQuestions,
-      duration,
-      evaluationsText,
-    );
+    const aiResult = this.useMockAI
+      ? this.getMockReportResult(evaluation.items, evaluation.overallScore)
+      : await this.callOpenAIReportGeneration(
+          session.difficulty,
+          session.totalQuestions,
+          duration,
+          evaluationsText,
+        );
 
     const report = this.reportRepository.create({
       sessionId,
@@ -146,6 +150,50 @@ export class ReportService {
       questionResults,
       metadata: report.metadata,
       createdAt: report.createdAt,
+    };
+  }
+
+  private getMockReportResult(
+    items: EvaluationItem[],
+    overallScore: number,
+  ): {
+    overallScore: number;
+    grade: string;
+    summary: string;
+    categoryScores: { category: string; score: number; questionCount: number }[];
+    strengths: string[];
+    improvements: string[];
+  } {
+    const categoryMap = new Map<string, { total: number; count: number }>();
+    for (const item of items) {
+      const cat = item.question?.category || 'general';
+      const existing = categoryMap.get(cat) || { total: 0, count: 0 };
+      existing.total += item.totalScore;
+      existing.count += 1;
+      categoryMap.set(cat, existing);
+    }
+
+    const categoryScores = Array.from(categoryMap.entries()).map(([category, data]) => ({
+      category,
+      score: Math.round(data.total / data.count),
+      questionCount: data.count,
+    }));
+
+    return {
+      overallScore,
+      grade: this.calculateGrade(overallScore),
+      summary: '전반적으로 프론트엔드 핵심 개념에 대한 이해도가 높습니다. 프레임워크 관련 질문에서 강점을 보였으며, 성능 최적화 영역에서 보완이 필요합니다.',
+      categoryScores,
+      strengths: [
+        'Vue3 Composition API에 대한 깊은 이해',
+        'TypeScript 타입 시스템 활용 능력',
+        '명확하고 구조적인 답변 전달력',
+      ],
+      improvements: [
+        '웹 성능 최적화 전략에 대한 학습 필요',
+        '대규모 애플리케이션 아키텍처 설계 경험 보강',
+        '브라우저 렌더링 파이프라인 심화 학습',
+      ],
     };
   }
 

@@ -11,7 +11,7 @@ import { Repository } from 'typeorm';
 import { join } from 'path';
 import { mkdirSync, writeFileSync, readFileSync } from 'fs';
 import OpenAI from 'openai';
-import * as pdfParse from 'pdf-parse';
+import pdfParse from 'pdf-parse';
 import { Resume } from './entities/resume.entity';
 import { UploadResumeDto } from './dto/upload-resume.dto';
 import {
@@ -28,6 +28,7 @@ export class ResumeService {
   private readonly openaiModel: string;
   private readonly openaiTemperature: number;
   private readonly uploadPath: string;
+  private readonly useMockAI: boolean;
 
   constructor(
     @InjectRepository(Resume)
@@ -38,6 +39,7 @@ export class ResumeService {
     this.openai = new OpenAI({ apiKey: openaiConfig.apiKey });
     this.openaiModel = openaiConfig.model;
     this.openaiTemperature = openaiConfig.temperature;
+    this.useMockAI = configService.get<string>('USE_MOCK_AI', 'false') === 'true';
 
     const uploadConfig = getUploadConfig(configService);
     this.uploadPath = uploadConfig.resumePath;
@@ -87,18 +89,26 @@ export class ResumeService {
     await this.resumeRepository.save(resume);
 
     try {
-      const pdfData = await pdfParse(
-        readFileSync(resume.filePath),
-      );
-      const rawText = pdfData.text;
+      let rawText: string;
 
-      if (!rawText || rawText.trim().length === 0) {
-        throw new UnprocessableEntityException('PDF에서 텍스트를 추출할 수 없습니다.');
+      if (this.useMockAI) {
+        rawText = 'Mock resume text for testing';
+      } else {
+        const pdfData = await pdfParse(
+          readFileSync(resume.filePath),
+        );
+        rawText = pdfData.text;
+
+        if (!rawText || rawText.trim().length === 0) {
+          throw new UnprocessableEntityException('PDF에서 텍스트를 추출할 수 없습니다.');
+        }
       }
 
       resume.rawText = rawText;
 
-      const analysisResult = await this.callOpenAIAnalysis(rawText);
+      const analysisResult = this.useMockAI
+        ? this.getMockAnalysisResult()
+        : await this.callOpenAIAnalysis(rawText);
 
       resume.skills = analysisResult.skills || [];
       resume.careers = analysisResult.careers || [];
@@ -164,6 +174,46 @@ export class ResumeService {
     }
 
     return resume;
+  }
+
+  private getMockAnalysisResult(): { skills: string[]; careers: Record<string, unknown>[]; projects: Record<string, unknown>[] } {
+    return {
+      skills: ['Vue3', 'TypeScript', 'React', 'JavaScript', 'HTML/CSS', 'Pinia', 'Vite'],
+      careers: [
+        {
+          company: 'ABC Corp',
+          position: 'Frontend Developer',
+          startDate: '2023-01',
+          endDate: '2025-12',
+          description: 'Vue3 기반 SPA 개발 및 유지보수',
+        },
+        {
+          company: 'XYZ Inc',
+          position: 'Junior Developer',
+          startDate: '2021-03',
+          endDate: '2022-12',
+          description: 'React 기반 관리자 대시보드 개발',
+        },
+      ],
+      projects: [
+        {
+          name: 'E-Commerce Platform',
+          role: 'Frontend Lead',
+          startDate: '2024-03',
+          endDate: '2025-06',
+          description: 'Vue3 + TypeScript 기반 이커머스 플랫폼 개발',
+          skills: ['Vue3', 'TypeScript', 'Pinia'],
+        },
+        {
+          name: 'Admin Dashboard',
+          role: 'Frontend Developer',
+          startDate: '2021-06',
+          endDate: '2022-10',
+          description: 'React + Redux 기반 관리자 대시보드 개발',
+          skills: ['React', 'Redux', 'TypeScript'],
+        },
+      ],
+    };
   }
 
   private async callOpenAIAnalysis(

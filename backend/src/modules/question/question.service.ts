@@ -21,6 +21,7 @@ export class QuestionService {
   private readonly openai: OpenAI;
   private readonly openaiModel: string;
   private readonly openaiTemperature: number;
+  private readonly useMockAI: boolean;
 
   constructor(
     @InjectRepository(QuestionSet)
@@ -34,6 +35,7 @@ export class QuestionService {
     this.openai = new OpenAI({ apiKey: openaiConfig.apiKey });
     this.openaiModel = openaiConfig.model;
     this.openaiTemperature = openaiConfig.temperature;
+    this.useMockAI = configService.get<string>('USE_MOCK_AI', 'false') === 'true';
   }
 
   async generate(
@@ -49,13 +51,15 @@ export class QuestionService {
     const difficulty = dto.difficulty || 'medium';
     const count = dto.count || 10;
 
-    const generatedQuestions = await this.callOpenAIGeneration(
-      resume.skills,
-      resume.careers,
-      resume.projects,
-      difficulty,
-      count,
-    );
+    const generatedQuestions = this.useMockAI
+      ? this.getMockQuestions(difficulty, count)
+      : await this.callOpenAIGeneration(
+          resume.skills,
+          resume.careers,
+          resume.projects,
+          difficulty,
+          count,
+        );
 
     const questionSet = this.questionSetRepository.create({
       resumeId: dto.resumeId,
@@ -131,6 +135,25 @@ export class QuestionService {
       isFollowUp: question.questionType === 'follow_up',
       parentQuestionId: question.parentQuestionId,
     };
+  }
+
+  private getMockQuestions(
+    difficulty: string,
+    count: number,
+  ): { content: string; category: string; difficulty: string; order: number }[] {
+    const mockPool = [
+      { content: 'Vue3의 Composition API와 Options API의 차이점을 설명해주세요.', category: 'framework', difficulty, order: 1 },
+      { content: 'TypeScript에서 제네릭을 활용한 경험이 있다면 설명해주세요.', category: 'language', difficulty, order: 2 },
+      { content: 'Pinia와 Vuex의 차이점과 Pinia를 선택한 이유를 설명해주세요.', category: 'framework', difficulty, order: 3 },
+      { content: '웹 성능 최적화를 위해 적용한 방법이 있다면 설명해주세요.', category: 'performance', difficulty, order: 4 },
+      { content: 'SPA에서 라우팅을 구현할 때 고려해야 할 사항은 무엇인가요?', category: 'architecture', difficulty, order: 5 },
+      { content: 'CSS-in-JS와 전통적 CSS 방식의 장단점을 비교해주세요.', category: 'css', difficulty, order: 6 },
+      { content: 'React와 Vue의 렌더링 방식 차이를 설명해주세요.', category: 'framework', difficulty, order: 7 },
+      { content: 'JavaScript의 이벤트 루프와 비동기 처리 방식을 설명해주세요.', category: 'language', difficulty, order: 8 },
+      { content: '프론트엔드 테스트 전략에 대해 설명해주세요.', category: 'testing', difficulty, order: 9 },
+      { content: '대규모 프론트엔드 프로젝트에서 상태 관리 전략을 설명해주세요.', category: 'architecture', difficulty, order: 10 },
+    ];
+    return mockPool.slice(0, count);
   }
 
   private async callOpenAIGeneration(
