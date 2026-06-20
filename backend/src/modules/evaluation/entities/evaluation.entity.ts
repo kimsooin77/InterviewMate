@@ -25,7 +25,7 @@ export class Evaluation {
   @Column({ name: 'overall_score', type: 'smallint' })
   overallScore: number;
 
-  @CreateDateColumn({ name: 'created_at' })
+  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 
   @OneToMany(() => EvaluationItem, (item) => item.evaluation)

@@ -60,6 +60,6 @@ export class EvaluationItem {
   @Column({ type: 'jsonb', default: '[]' })
   improvements: string[];
 
-  @CreateDateColumn({ name: 'created_at' })
+  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 }

@@ -11,7 +11,7 @@
         {{ scoreGrade }}
       </el-tag>
       <span class="evaluation-summary__count">
-        총 {{ questionCount }}개 질문 평가
+        보완 필요 문항 {{ questionCount }}개
       </span>
     </div>
   </el-card>

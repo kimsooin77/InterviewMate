@@ -8,6 +8,7 @@ export class EvaluationScoresDto {
 export class EvaluationItemResponseDto {
   questionId: number;
   question: string;
+  answer: string;
   scores: EvaluationScoresDto;
   totalScore: number;
   feedback: string;

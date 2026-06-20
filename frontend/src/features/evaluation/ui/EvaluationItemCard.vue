@@ -1,112 +1,92 @@
 <template>
   <el-card shadow="hover" class="eval-item-card">
     <div class="eval-item-card__header">
-      <span class="eval-item-card__score" :style="{ color: scoreColor }">
-        {{ item.totalScore }}점
-      </span>
+      <el-tag type="warning">보완 필요</el-tag>
+      <span class="eval-item-card__score">{{ item.totalScore }}점</span>
     </div>
 
-    <p class="eval-item-card__question">{{ item.question }}</p>
+    <section class="eval-item-card__section">
+      <h4>질문</h4>
+      <p>{{ item.question }}</p>
+    </section>
 
-    <ScoreRadarChart :scores="item.scores" style="margin: 16px 0" />
+    <section class="eval-item-card__section eval-item-card__section--answer">
+      <h4>내 답변</h4>
+      <p>{{ item.answer }}</p>
+    </section>
 
-    <div class="eval-item-card__feedback">
+    <section class="eval-item-card__section">
+      <h4>해설</h4>
       <p>{{ item.feedback }}</p>
-    </div>
+    </section>
 
-    <el-row :gutter="16" style="margin-top: 16px">
-      <el-col :span="12">
-        <div class="eval-item-card__list eval-item-card__list--strength">
-          <h4>강점</h4>
-          <ul>
-            <li v-for="(s, i) in item.strengths" :key="i">{{ s }}</li>
-          </ul>
-        </div>
-      </el-col>
-      <el-col :span="12">
-        <div class="eval-item-card__list eval-item-card__list--improvement">
-          <h4>개선점</h4>
-          <ul>
-            <li v-for="(imp, i) in item.improvements" :key="i">{{ imp }}</li>
-          </ul>
-        </div>
-      </el-col>
-    </el-row>
+    <section class="eval-item-card__section" v-if="item.improvements.length">
+      <h4>부족한 부분</h4>
+      <ul>
+        <li v-for="(improvement, index) in item.improvements" :key="index">
+          {{ improvement }}
+        </li>
+      </ul>
+    </section>
   </el-card>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
-import ScoreRadarChart from './ScoreRadarChart.vue';
 import type { EvaluationItem } from '../model/evaluation.types';
 
-const props = defineProps<{
+defineProps<{
   item: EvaluationItem;
 }>();
-
-const scoreColor = computed(() => {
-  if (props.item.totalScore >= 80) return '#67C23A';
-  if (props.item.totalScore >= 60) return '#E6A23C';
-  return '#F56C6C';
-});
 </script>
 
 <style lang="scss" scoped>
 .eval-item-card {
   &__header {
     display: flex;
-    justify-content: flex-end;
-    margin-bottom: 8px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
   }
 
   &__score {
-    font-size: 20px;
+    font-size: 18px;
     font-weight: 700;
+    color: #e6a23c;
   }
 
-  &__question {
-    margin: 0;
-    font-size: 16px;
-    line-height: 1.6;
-    font-weight: 500;
-  }
-
-  &__feedback {
-    background: #f5f7fa;
-    padding: 12px 16px;
-    border-radius: 8px;
-
-    p {
-      margin: 0;
-      font-size: 14px;
-      line-height: 1.6;
-      color: #606266;
+  &__section {
+    & + & {
+      margin-top: 16px;
     }
-  }
 
-  &__list {
     h4 {
       margin: 0 0 8px;
       font-size: 14px;
+      color: #303133;
+    }
+
+    p {
+      margin: 0;
+      line-height: 1.7;
+      color: #606266;
+      white-space: pre-wrap;
     }
 
     ul {
       margin: 0;
       padding-left: 18px;
+      color: #606266;
 
       li {
-        font-size: 13px;
         line-height: 1.8;
-        color: #606266;
       }
     }
 
-    &--strength h4 {
-      color: #67C23A;
-    }
-
-    &--improvement h4 {
-      color: #E6A23C;
+    &--answer {
+      padding: 12px 16px;
+      border-radius: 8px;
+      background: #f5f7fa;
     }
   }
 }

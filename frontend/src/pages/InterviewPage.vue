@@ -2,12 +2,22 @@
   <div class="interview-page">
     <el-page-header @back="handleBack">
       <template #content>면접 진행</template>
+      <template #extra>
+        <el-button
+          v-if="!isCompleted && interviewStore.session"
+          type="danger"
+          plain
+          @click="handleExit"
+        >
+          면접 종료
+        </el-button>
+      </template>
     </el-page-header>
 
-    <div v-if="isCompleted" class="interview-page__completed" style="margin-top: 40px">
+    <div v-if="isCompleted" class="interview-page__completed">
       <el-result
         icon="success"
-        title="면접이 완료되었습니다!"
+        title="면접이 완료되었습니다"
         sub-title="모든 질문에 답변하셨습니다. 평가를 요청해보세요."
       >
         <template #extra>
@@ -27,11 +37,14 @@
       :current-question="interviewStore.currentQuestion"
       :progress="interviewStore.progress"
       :is-submitting="interviewStore.isSubmitting"
-      style="margin-top: 20px"
+      :current-answer="interviewStore.currentAnswer"
+      :answer-feedback="interviewStore.latestFeedback"
+      class="interview-page__session"
       @submit="handleSubmit"
+      @continue="interviewStore.continueAfterFeedback"
     />
 
-    <el-skeleton v-else :rows="10" animated style="margin-top: 20px" />
+    <el-skeleton v-else :rows="10" animated class="interview-page__session" />
   </div>
 </template>
 
@@ -50,6 +63,7 @@ const isCompleted = computed(() => interviewStore.isCompleted);
 
 onMounted(async () => {
   const questionSetId = Number(route.params.questionSetId);
+
   try {
     await interviewStore.startSession(questionSetId);
   } catch (error: unknown) {
@@ -69,12 +83,21 @@ async function handleSubmit(data: { questionId: number; content: string }) {
 }
 
 async function handleBack() {
+  if (!isCompleted.value && interviewStore.canGoPrevious) {
+    interviewStore.goToPreviousQuestion();
+    return;
+  }
+
+  await handleExit();
+}
+
+async function handleExit() {
   if (!isCompleted.value && interviewStore.session) {
     try {
       await ElMessageBox.confirm(
-        '면접을 중단하시겠습니까? 진행 상황이 저장되지 않습니다.',
-        '면접 중단',
-        { confirmButtonText: '중단', cancelButtonText: '취소', type: 'warning' },
+        '면접을 종료하시겠습니까? 진행 상황은 저장되지 않습니다.',
+        '면접 종료',
+        { confirmButtonText: '종료', cancelButtonText: '취소', type: 'warning' },
       );
       interviewStore.reset();
       router.back();
@@ -92,5 +115,13 @@ async function handleBack() {
   max-width: 800px;
   margin: 0 auto;
   padding: 20px;
+
+  &__session {
+    margin-top: 20px;
+  }
+
+  &__completed {
+    margin-top: 40px;
+  }
 }
 </style>

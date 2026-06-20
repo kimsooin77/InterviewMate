@@ -8,6 +8,7 @@ export interface EvaluationScores {
 export interface EvaluationItem {
   questionId: number;
   question: string;
+  answer: string;
   scores: EvaluationScores;
   totalScore: number;
   feedback: string;

@@ -43,6 +43,6 @@ export class Resume extends BaseEntity {
   @Column({ type: 'jsonb', default: '[]' })
   projects: Record<string, unknown>[];
 
-  @Column({ name: 'analysis_completed_at', type: 'timestamp', nullable: true })
+  @Column({ name: 'analysis_completed_at', type: 'timestamptz', nullable: true })
   analysisCompletedAt: Date | null;
 }

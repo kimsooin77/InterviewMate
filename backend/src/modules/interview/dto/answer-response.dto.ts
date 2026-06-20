@@ -5,11 +5,17 @@ export class ProgressDto {
   total: number;
 }
 
+export class AnswerFeedbackDto {
+  isCorrect: boolean;
+  explanation: string;
+}
+
 export class AnswerResponseDto {
   id: number;
   sessionId: number;
   questionId: number;
   content: string;
+  feedback: AnswerFeedbackDto;
   nextQuestion: CurrentQuestionDto | null;
   progress: ProgressDto;
   sessionStatus?: string;

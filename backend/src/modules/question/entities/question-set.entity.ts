@@ -29,10 +29,10 @@ export class QuestionSet {
   @Column({ name: 'question_count', type: 'smallint' })
   questionCount: number;
 
-  @CreateDateColumn({ name: 'created_at' })
+  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 
-  @DeleteDateColumn({ name: 'deleted_at', nullable: true })
+  @DeleteDateColumn({ name: 'deleted_at', type: 'timestamptz', nullable: true })
   deletedAt: Date | null;
 
   @OneToMany(() => Question, (question) => question.questionSet)

@@ -136,7 +136,7 @@ export class EvaluationService {
 
     const evaluation = await this.evaluationRepository.findOne({
       where: { sessionId },
-      relations: ['items', 'items.question'],
+      relations: ['items', 'items.question', 'items.answer'],
     });
 
     if (!evaluation) {
@@ -148,6 +148,7 @@ export class EvaluationService {
       .map((item) => ({
         questionId: item.questionId,
         question: item.question.content,
+        answer: item.answer.content,
         scores: item.scores,
         totalScore: item.totalScore,
         feedback: item.feedback,
@@ -174,6 +175,7 @@ export class EvaluationService {
       return {
         questionId: item.questionId,
         question: answer!.question.content,
+        answer: answer!.content,
         scores: item.scores,
         totalScore: item.totalScore,
         feedback: item.feedback,

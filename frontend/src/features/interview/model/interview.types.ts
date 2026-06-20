@@ -21,11 +21,17 @@ export interface Progress {
   total: number;
 }
 
+export interface AnswerFeedback {
+  isCorrect: boolean;
+  explanation: string;
+}
+
 export interface AnswerResponse {
   id: number;
   sessionId: number;
   questionId: number;
   content: string;
+  feedback: AnswerFeedback;
   nextQuestion: CurrentQuestion | null;
   progress: Progress;
   sessionStatus?: string;

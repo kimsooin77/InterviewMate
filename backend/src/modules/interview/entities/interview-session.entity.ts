@@ -52,16 +52,16 @@ export class InterviewSession {
   @Column({ type: 'varchar', length: 20 })
   difficulty: string;
 
-  @CreateDateColumn({ name: 'started_at' })
+  @CreateDateColumn({ name: 'started_at', type: 'timestamptz' })
   startedAt: Date;
 
-  @Column({ name: 'completed_at', type: 'timestamp', nullable: true })
+  @Column({ name: 'completed_at', type: 'timestamptz', nullable: true })
   completedAt: Date | null;
 
-  @CreateDateColumn({ name: 'created_at' })
+  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 
-  @DeleteDateColumn({ name: 'deleted_at', nullable: true })
+  @DeleteDateColumn({ name: 'deleted_at', type: 'timestamptz', nullable: true })
   deletedAt: Date | null;
 
   @OneToMany(() => InterviewAnswer, (answer) => answer.session)

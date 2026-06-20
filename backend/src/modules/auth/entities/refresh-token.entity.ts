@@ -23,9 +23,9 @@ export class RefreshToken {
   @Column({ type: 'varchar', length: 500, unique: true })
   token: string;
 
-  @Column({ name: 'expires_at', type: 'timestamp' })
-  expiresAt: Date;
+  @Column({ name: 'expires_at', type: 'timestamptz', nullable: true })
+  expiresAt: Date | null;
 
-  @CreateDateColumn({ name: 'created_at' })
+  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 }

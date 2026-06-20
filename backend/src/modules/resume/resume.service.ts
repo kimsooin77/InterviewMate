@@ -51,15 +51,16 @@ export class ResumeService {
     file: Express.Multer.File,
     dto: UploadResumeDto,
   ): Promise<UploadResponseDto> {
-    const fileName = `${Date.now()}-${file.originalname}`;
+    const originalName = this.decodeOriginalName(file.originalname);
+    const fileName = `${Date.now()}-${originalName}`;
     const filePath = join(this.uploadPath, fileName);
 
     writeFileSync(filePath, file.buffer);
 
     const resume = this.resumeRepository.create({
       userId,
-      title: dto.title || file.originalname.replace('.pdf', ''),
-      fileName: file.originalname,
+      title: dto.title || originalName.replace(/\.pdf$/i, ''),
+      fileName: originalName,
       filePath,
       fileSize: file.size,
       analysisStatus: 'pending',
@@ -69,8 +70,8 @@ export class ResumeService {
 
     return {
       id: saved.id,
-      title: saved.title,
-      fileName: saved.fileName,
+      title: resume.title,
+      fileName: originalName,
       fileSize: saved.fileSize,
       mimeType: 'application/pdf',
       status: saved.analysisStatus,
@@ -120,7 +121,7 @@ export class ResumeService {
 
       return {
         id: resume.id,
-        title: resume.title,
+        title: this.decodeOriginalName(resume.title),
         status: resume.analysisStatus,
         skills: resume.skills,
         careers: resume.careers,
@@ -147,8 +148,8 @@ export class ResumeService {
 
     return {
       id: resume.id,
-      title: resume.title,
-      fileName: resume.fileName,
+      title: this.decodeOriginalName(resume.title),
+      fileName: this.decodeOriginalName(resume.fileName),
       fileSize: resume.fileSize,
       status: resume.analysisStatus,
       skills: resume.skills,
@@ -174,6 +175,20 @@ export class ResumeService {
     }
 
     return resume;
+  }
+
+  private decodeOriginalName(originalName: string): string {
+    if (!this.looksLikeMojibake(originalName)) {
+      return originalName;
+    }
+
+    const decoded = Buffer.from(originalName, 'latin1').toString('utf8');
+
+    return decoded;
+  }
+
+  private looksLikeMojibake(value: string): boolean {
+    return /[ÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ]/.test(value);
   }
 
   private getMockAnalysisResult(): { skills: string[]; careers: Record<string, unknown>[]; projects: Record<string, unknown>[] } {

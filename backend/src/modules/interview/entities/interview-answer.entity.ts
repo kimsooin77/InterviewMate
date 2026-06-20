@@ -35,9 +35,9 @@ export class InterviewAnswer {
   @Column({ type: 'text' })
   content: string;
 
-  @CreateDateColumn({ name: 'submitted_at' })
+  @CreateDateColumn({ name: 'submitted_at', type: 'timestamptz' })
   submittedAt: Date;
 
-  @CreateDateColumn({ name: 'created_at' })
+  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 }
