@@ -1,12 +1,19 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { TOKEN_KEY, REFRESH_TOKEN_KEY } from '@/shared/constants';
+import {
+  clearStoredAuth,
+  hasValidStoredAccessToken,
+  getStoredAccessToken,
+} from '@/shared/utils/auth-token';
 import { authApi } from '../api/auth.api';
 import type { User, LoginRequest, SignupRequest } from './auth.types';
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null);
-  const token = ref<string | null>(localStorage.getItem(TOKEN_KEY));
+  const token = ref<string | null>(
+    hasValidStoredAccessToken() ? getStoredAccessToken() : null,
+  );
 
   const isAuthenticated = computed(() => !!token.value);
 
@@ -29,8 +36,7 @@ export const useAuthStore = defineStore('auth', () => {
   function logout() {
     token.value = null;
     user.value = null;
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(REFRESH_TOKEN_KEY);
+    clearStoredAuth();
   }
 
   return {

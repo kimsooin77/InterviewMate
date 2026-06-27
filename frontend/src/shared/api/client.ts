@@ -1,6 +1,11 @@
 import axios from 'axios';
 import type { AxiosError } from 'axios';
-import { API_BASE_URL, TOKEN_KEY, REFRESH_TOKEN_KEY } from '@/shared/constants';
+import { API_BASE_URL } from '@/shared/constants';
+import {
+  clearStoredAuth,
+  getStoredAccessToken,
+  isAccessTokenExpired,
+} from '@/shared/utils/auth-token';
 import type { ApiError } from './types';
 
 const apiClient = axios.create({
@@ -13,8 +18,14 @@ const apiClient = axios.create({
 
 // Request: Access Token 자동 주입
 apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem(TOKEN_KEY);
+  const token = getStoredAccessToken();
   if (token) {
+    if (isAccessTokenExpired(token)) {
+      clearStoredAuth();
+      redirectToLogin();
+      return config;
+    }
+
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
@@ -25,12 +36,19 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error: AxiosError<ApiError>) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem(TOKEN_KEY);
-      localStorage.removeItem(REFRESH_TOKEN_KEY);
-      window.location.href = '/login';
+      clearStoredAuth();
+      redirectToLogin();
     }
     return Promise.reject(error);
   },
 );
+
+function redirectToLogin() {
+  const currentPath = window.location.pathname + window.location.search;
+  if (window.location.pathname === '/login') return;
+
+  const redirect = encodeURIComponent(currentPath);
+  window.location.replace(`/login?redirect=${redirect}`);
+}
 
 export default apiClient;
