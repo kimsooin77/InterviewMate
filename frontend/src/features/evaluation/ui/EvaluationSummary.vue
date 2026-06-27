@@ -1,15 +1,16 @@
 <template>
   <el-card class="evaluation-summary">
-    <div class="evaluation-summary__score">
+    <div class="evaluation-summary__main">
       <span class="evaluation-summary__number" :style="{ color: scoreColor }">
         {{ overallScore }}
       </span>
-      <span class="evaluation-summary__label">종합 점수</span>
+      <div class="evaluation-summary__text">
+        <span class="evaluation-summary__label">종합 점수</span>
+        <strong>{{ scoreGrade }}</strong>
+      </div>
     </div>
     <div class="evaluation-summary__meta">
-      <el-tag :type="scoreTagType" size="large">
-        {{ scoreGrade }}
-      </el-tag>
+      <el-tag :type="scoreTagType" size="small">{{ scoreGrade }}</el-tag>
       <span class="evaluation-summary__count">
         보완 필요 문항 {{ questionCount }}개
       </span>
@@ -52,20 +53,35 @@ const scoreGrade = computed(() => {
 
 <style lang="scss" scoped>
 .evaluation-summary {
-  text-align: center;
-
-  &__score {
+  :deep(.el-card__body) {
     display: flex;
-    flex-direction: column;
     align-items: center;
-    gap: 4px;
-    margin-bottom: 16px;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 14px 18px;
+  }
+
+  &__main {
+    display: flex;
+    align-items: center;
+    gap: 12px;
   }
 
   &__number {
-    font-size: 64px;
+    font-size: 34px;
     font-weight: 700;
     line-height: 1;
+  }
+
+  &__text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+
+    strong {
+      font-size: 15px;
+      color: #303133;
+    }
   }
 
   &__label {
@@ -76,13 +92,22 @@ const scoreGrade = computed(() => {
   &__meta {
     display: flex;
     align-items: center;
-    justify-content: center;
-    gap: 12px;
+    justify-content: flex-end;
+    gap: 10px;
   }
 
   &__count {
     font-size: 14px;
     color: #606266;
+  }
+}
+
+@media (max-width: 560px) {
+  .evaluation-summary {
+    :deep(.el-card__body) {
+      align-items: flex-start;
+      flex-direction: column;
+    }
   }
 }
 </style>

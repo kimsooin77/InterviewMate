@@ -2,6 +2,15 @@
   <div class="evaluation-page">
     <el-page-header @back="router.back()">
       <template #content>면접 평가</template>
+      <template #extra>
+        <el-button
+          v-if="evaluationStore.currentEvaluation"
+          type="primary"
+          @click="router.push(`/reports/${sessionId}`)"
+        >
+          리포트 보기
+        </el-button>
+      </template>
     </el-page-header>
 
     <div v-if="evaluationStore.isEvaluating" class="evaluation-page__state">
@@ -78,15 +87,6 @@
         </div>
       </div>
 
-      <div class="evaluation-page__actions">
-        <el-button
-          type="primary"
-          size="large"
-          @click="router.push(`/reports/${sessionId}`)"
-        >
-          리포트 보기
-        </el-button>
-      </div>
     </div>
 
     <el-skeleton v-else :rows="10" animated class="evaluation-page__content" />
@@ -168,24 +168,28 @@ function handleEvaluationScroll() {
 
 <style lang="scss" scoped>
 .evaluation-page {
-  max-width: 800px;
+  max-width: 920px;
   margin: 0 auto;
-  padding: 20px;
+  padding: 16px 20px;
 
   &__state {
     margin-top: 40px;
   }
 
   &__content {
-    margin-top: 20px;
+    margin-top: 12px;
   }
 
   &__notice {
-    margin-top: 20px;
+    margin-top: 10px;
+
+    :deep(.el-alert__content) {
+      padding: 0;
+    }
   }
 
   &__carousel {
-    margin-top: 24px;
+    margin-top: 14px;
   }
 
   &__carousel-header {
@@ -193,7 +197,7 @@ function handleEvaluationScroll() {
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    margin-bottom: 12px;
+    margin-bottom: 8px;
 
     strong {
       color: #1f2a44;
@@ -227,7 +231,7 @@ function handleEvaluationScroll() {
     display: flex;
     justify-content: center;
     gap: 8px;
-    margin-top: 14px;
+    margin-top: 10px;
 
     button {
       width: 8px;
@@ -245,9 +249,5 @@ function handleEvaluationScroll() {
     }
   }
 
-  &__actions {
-    margin-top: 32px;
-    text-align: center;
-  }
 }
 </style>

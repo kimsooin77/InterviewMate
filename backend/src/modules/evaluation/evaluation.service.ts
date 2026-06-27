@@ -86,19 +86,21 @@ export class EvaluationService {
 
     const savedEvaluation = await this.evaluationRepository.save(evaluation);
 
-    const items = answers.map((answer, index) =>
-      this.evaluationItemRepository.create({
+    const items = answers.map((answer, index) => {
+      const result = this.withIdealAnswerFallback(evaluationResults[index], answer);
+
+      return this.evaluationItemRepository.create({
         evaluationId: savedEvaluation.id,
         questionId: answer.questionId,
         answerId: answer.id,
-        scores: evaluationResults[index].scores,
-        totalScore: evaluationResults[index].totalScore,
-        feedback: evaluationResults[index].feedback,
-        strengths: evaluationResults[index].strengths,
-        improvements: evaluationResults[index].improvements,
-        idealAnswer: evaluationResults[index].idealAnswer || '',
-      }),
-    );
+        scores: result.scores,
+        totalScore: result.totalScore,
+        feedback: result.feedback,
+        strengths: result.strengths,
+        improvements: result.improvements,
+        idealAnswer: result.idealAnswer,
+      });
+    });
 
     const savedItems = await this.evaluationItemRepository.save(items);
 
@@ -143,7 +145,7 @@ export class EvaluationService {
         feedback: item.feedback,
         strengths: item.strengths,
         improvements: item.improvements,
-        idealAnswer: item.idealAnswer || '',
+        idealAnswer: item.idealAnswer || this.buildIdealAnswerFallback(item.question.content),
       }));
 
     return {
@@ -172,7 +174,7 @@ export class EvaluationService {
         feedback: item.feedback,
         strengths: item.strengths,
         improvements: item.improvements,
-        idealAnswer: item.idealAnswer || '',
+        idealAnswer: item.idealAnswer || this.buildIdealAnswerFallback(answer!.question.content),
       };
     });
 
@@ -201,5 +203,41 @@ export class EvaluationService {
       strengths: ['핵심 개념 이해', '논리적인 답변 구조'],
       improvements: ['실무 사례 보강 필요', '성능 관점 분석 추가'],
     };
+  }
+
+  private withIdealAnswerFallback(
+    result: AnswerEvaluationResult,
+    answer: InterviewAnswer,
+  ): AnswerEvaluationResult {
+    const idealAnswer = result.idealAnswer?.trim();
+
+    if (idealAnswer) {
+      return result;
+    }
+
+    return {
+      ...result,
+      idealAnswer: this.buildIdealAnswerFallback(answer.question.content),
+    };
+  }
+
+  private buildIdealAnswerFallback(question: string): string {
+    const normalizedQuestion = question.toLowerCase();
+
+    if (normalizedQuestion.includes('next') || question.includes('SSR')) {
+      return [
+        'Next.js의 SSR은 요청 시점에 서버에서 React 페이지를 렌더링해 HTML을 먼저 내려주는 방식입니다.',
+        '초기 화면에 필요한 데이터와 마크업이 서버에서 준비되기 때문에 검색 엔진 노출, 초기 콘텐츠 표시, 공유 미리보기 같은 요구가 있는 페이지에 특히 유리합니다.',
+        '다만 모든 페이지를 SSR로 처리하면 서버 부하와 응답 시간이 늘 수 있으므로, 사용자별 실시간 데이터가 필요한 영역은 SSR을 쓰고 정적 콘텐츠나 자주 바뀌지 않는 페이지는 SSG나 캐싱 전략을 함께 검토합니다.',
+        '실무에서는 API 호출 위치, 인증 쿠키 전달, 캐시 정책, 로딩/에러 처리, 서버와 클라이언트 상태 불일치 문제를 함께 확인하며 적용하는 것이 중요합니다.',
+      ].join(' ');
+    }
+
+    return [
+      `이 질문은 "${question}"에 대해 핵심 개념, 적용 상황, 장단점, 실제 구현 관점을 함께 설명하는 답변이 좋습니다.`,
+      '먼저 해당 기술이나 개념이 어떤 문제를 해결하는지 정의하고, 프로젝트에서 어떤 상황에 적용할 수 있는지 예를 들어 설명합니다.',
+      '그다음 선택 이유와 대안 대비 장단점을 말하고, 성능, 유지보수성, 사용자 경험, 장애 대응처럼 실무에서 확인해야 할 기준을 함께 언급하면 답변의 깊이가 살아납니다.',
+      '마지막으로 직접 경험한 사례가 있다면 문제 상황, 내가 맡은 역할, 해결 과정, 결과와 배운 점 순서로 정리하면 면접관이 개발 역량을 판단하기 쉽습니다.',
+    ].join(' ');
   }
 }

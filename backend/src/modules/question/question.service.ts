@@ -58,17 +58,23 @@ export class QuestionService {
             }),
           () => this.getMockQuestions(difficulty, requestedCount, jobPosting),
         );
+    const developerFocusedQuestions = this.ensureDeveloperFocusedQuestions(
+      generatedQuestions,
+      resumeAnalysis,
+      jobPosting,
+      difficulty,
+    );
 
     const questionSet = this.questionSetRepository.create({
       resumeId: dto.resumeId,
       difficulty,
-      questionCount: generatedQuestions.length,
+      questionCount: developerFocusedQuestions.length,
       jobPosting,
     });
 
     const savedSet = await this.questionSetRepository.save(questionSet);
 
-    const questions = generatedQuestions.map((q, index) =>
+    const questions = developerFocusedQuestions.map((q, index) =>
       this.questionRepository.create({
         questionSetId: savedSet.id,
         content: q.content,
@@ -166,5 +172,38 @@ export class QuestionService {
           ? '채용공고의 핵심 요구사항과 본인 이력서 경험을 연결해, 해당 역할에서 바로 기여할 수 있는 부분을 설명해주세요.'
           : question.content,
     }));
+  }
+
+  private ensureDeveloperFocusedQuestions(
+    questions: GeneratedQuestion[],
+    resumeAnalysis: ResumeAnalysisResult,
+    jobPosting: string | null,
+    difficulty: string,
+  ): GeneratedQuestion[] {
+    const resumeText = JSON.stringify(resumeAnalysis).toLowerCase();
+    const designToolExplicitlyProvided =
+      resumeText.includes('figma') ||
+      resumeText.includes('피그마') ||
+      resumeText.includes('design tool') ||
+      resumeText.includes('디자인 툴');
+
+    return questions.map((question, index) => {
+      if (designToolExplicitlyProvided || !this.isDesignToolQuestion(question.content)) {
+        return question;
+      }
+
+      return {
+        ...question,
+        content:
+          '채용공고의 요구사항을 기준으로, 본인 이력서의 개발 경험 중 해당 역할에서 바로 기여할 수 있는 구현 사례를 설명해주세요.',
+        category: 'career_fit',
+        difficulty: question.difficulty || difficulty,
+        order: question.order || index + 1,
+      };
+    });
+  }
+
+  private isDesignToolQuestion(content: string): boolean {
+    return /figma|피그마|디자인\s*툴|ui\s*디자인|디자이너|visual\s*design/i.test(content);
   }
 }
