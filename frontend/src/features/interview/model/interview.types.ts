@@ -4,6 +4,8 @@ export interface CurrentQuestion {
   category: string;
   difficulty: string;
   order: number;
+  isFollowUp: boolean;
+  parentQuestionId: number | null;
 }
 
 export interface InterviewSession {
@@ -34,6 +36,7 @@ export interface AnswerResponse {
   feedback: AnswerFeedback;
   nextQuestion: CurrentQuestion | null;
   progress: Progress;
+  hasFollowUp?: boolean;
   sessionStatus?: string;
   submittedAt: string;
 }

@@ -124,7 +124,6 @@ defineProps<{
 
     &--ideal {
       border: 1px solid #bfdbfe;
-      border-left: 4px solid #2563eb;
       background: #eff6ff;
 
       h4 {

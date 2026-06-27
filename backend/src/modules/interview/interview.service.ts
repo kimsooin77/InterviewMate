@@ -162,20 +162,32 @@ export class InterviewService {
           () => this.getMockAnswerFeedback(savedAnswer.content),
         );
 
+    let nextQuestion: CurrentQuestionDto | null = null;
+    let sessionStatus: string | undefined;
+    let hasFollowUp = false;
+
+    const followUpQuestion = await this.getOrCreateFollowUpQuestion(
+      session,
+      question,
+      savedAnswer.content,
+    );
+
+    if (followUpQuestion) {
+      nextQuestion = this.toCurrentQuestion(followUpQuestion);
+      hasFollowUp = true;
+    }
+
     const answeredCount = await this.answerRepository.count({
       where: { sessionId },
     });
 
-    const nextOrder = question.order + 1;
-    let nextQuestion: CurrentQuestionDto | null = null;
-    let sessionStatus: string | undefined;
-
-    if (question.order >= session.totalQuestions && answeredCount >= session.totalQuestions) {
+    if (!nextQuestion && question.order >= session.totalQuestions && answeredCount >= session.totalQuestions) {
       session.status = 'completed';
       session.completedAt = new Date();
       await this.sessionRepository.save(session);
       sessionStatus = 'completed';
-    } else {
+    } else if (!nextQuestion) {
+      const nextOrder = question.order + 1;
       const next = await this.questionRepository.findOne({
         where: { questionSetId: session.questionSetId, order: nextOrder },
       });
@@ -196,6 +208,7 @@ export class InterviewService {
         current: nextQuestion ? nextQuestion.order : Math.min(question.order, session.totalQuestions),
         total: session.totalQuestions,
       },
+      hasFollowUp,
       submittedAt: savedAnswer.submittedAt,
     };
 
@@ -222,6 +235,92 @@ export class InterviewService {
     };
   }
 
+  private async getOrCreateFollowUpQuestion(
+    session: InterviewSession,
+    question: Question,
+    answer: string,
+  ): Promise<Question | null> {
+    if (!this.shouldGenerateFollowUp(question, answer)) {
+      return null;
+    }
+
+    const existing = await this.questionRepository.findOne({
+      where: {
+        questionSetId: session.questionSetId,
+        parentQuestionId: question.id,
+        questionType: 'follow_up',
+      },
+    });
+
+    if (existing) {
+      return existing;
+    }
+
+    const followUp = this.openaiService.isMockMode()
+      ? this.getMockFollowUpQuestion(question)
+      : await this.openaiService.withMockFallback(
+          'interview.followUpQuestion',
+          () =>
+            this.openaiService.generateFollowUpQuestion({
+              question: question.content,
+              answer,
+              category: question.category,
+              difficulty: question.difficulty,
+            }),
+          () => this.getMockFollowUpQuestion(question),
+        );
+
+    await this.questionRepository
+      .createQueryBuilder()
+      .update(Question)
+      .set({ order: () => '"order" + 1' })
+      .where('question_set_id = :questionSetId', { questionSetId: session.questionSetId })
+      .andWhere('"order" > :order', { order: question.order })
+      .execute();
+
+    const savedFollowUp = await this.questionRepository.save(
+      this.questionRepository.create({
+        questionSetId: session.questionSetId,
+        parentQuestionId: question.id,
+        content: followUp.content,
+        category: followUp.category || question.category,
+        difficulty: followUp.difficulty || question.difficulty,
+        order: question.order + 1,
+        questionType: 'follow_up',
+      }),
+    );
+
+    session.totalQuestions += 1;
+    await this.sessionRepository.save(session);
+
+    return savedFollowUp;
+  }
+
+  private shouldGenerateFollowUp(question: Question, answer: string): boolean {
+    if (question.questionType === 'follow_up') {
+      return false;
+    }
+
+    const compactAnswer = answer.replace(/\s/g, '');
+    if (!compactAnswer || compactAnswer.includes('모르겠습니다')) {
+      return false;
+    }
+
+    return true;
+  }
+
+  private getMockFollowUpQuestion(question: Question): {
+    content: string;
+    category: string;
+    difficulty: string;
+  } {
+    return {
+      content: `${question.content}에 대한 답변을 실제 프로젝트에 적용했던 상황으로 확장해서, 선택한 방식과 대안 대비 장단점을 설명해주세요.`,
+      category: question.category,
+      difficulty: question.difficulty,
+    };
+  }
+
   private toCurrentQuestion(question: Question): CurrentQuestionDto {
     return {
       id: question.id,
@@ -229,6 +328,8 @@ export class InterviewService {
       category: question.category,
       difficulty: question.difficulty,
       order: question.order,
+      isFollowUp: question.questionType === 'follow_up',
+      parentQuestionId: question.parentQuestionId,
     };
   }
 

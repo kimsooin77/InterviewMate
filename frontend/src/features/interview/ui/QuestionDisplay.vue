@@ -2,8 +2,13 @@
   <el-card class="question-display">
     <div class="question-display__header">
       <el-tag size="small" :type="categoryType">{{ question.category }}</el-tag>
+      <el-tag v-if="question.isFollowUp" size="small" type="warning" effect="dark">
+        꼬리 질문
+      </el-tag>
       <el-tag size="small" effect="plain">{{ difficultyLabel }}</el-tag>
-      <span class="question-display__order">Q{{ question.order }}</span>
+      <span class="question-display__order">
+        {{ question.isFollowUp ? 'Follow-up' : `Q${question.order}` }}
+      </span>
     </div>
     <p class="question-display__content">{{ question.content }}</p>
   </el-card>

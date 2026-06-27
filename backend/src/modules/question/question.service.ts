@@ -3,12 +3,14 @@ import {
   NotFoundException,
   ForbiddenException,
   ConflictException,
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { QuestionSet } from './entities/question-set.entity';
 import { Question } from './entities/question.entity';
 import { GenerateQuestionsDto } from './dto/generate-questions.dto';
+import { FollowUpQuestionDto } from './dto/follow-up-question.dto';
 import { QuestionSetResponseDto } from './dto/question-set-response.dto';
 import { QuestionResponseDto } from './dto/question-response.dto';
 import { ResumeService } from '../resume/resume.service';
@@ -116,6 +118,76 @@ export class QuestionService {
     return this.toQuestionSetResponse(questionSet, questions);
   }
 
+  async generateFollowUp(userId: number, dto: FollowUpQuestionDto) {
+    const parentQuestion = await this.questionRepository.findOne({
+      where: { id: dto.questionId },
+      relations: ['questionSet', 'questionSet.resume'],
+    });
+
+    if (!parentQuestion) {
+      throw new NotFoundException('원본 질문을 찾을 수 없습니다.');
+    }
+
+    if (parentQuestion.questionSet.resume.userId !== userId) {
+      throw new ForbiddenException('본인의 질문에만 접근할 수 있습니다.');
+    }
+
+    if (parentQuestion.questionType === 'follow_up') {
+      throw new BadRequestException('꼬리 질문에는 다시 꼬리 질문을 생성할 수 없습니다.');
+    }
+
+    const existing = await this.questionRepository.findOne({
+      where: {
+        questionSetId: parentQuestion.questionSetId,
+        parentQuestionId: parentQuestion.id,
+        questionType: 'follow_up',
+      },
+    });
+
+    if (existing) {
+      return this.toFollowUpResponse(existing);
+    }
+
+    const followUp = this.openaiService.isMockMode()
+      ? this.getMockFollowUpQuestion(parentQuestion, dto.answer)
+      : await this.openaiService.withMockFallback(
+          'question.followUp',
+          () =>
+            this.openaiService.generateFollowUpQuestion({
+              question: parentQuestion.content,
+              answer: dto.answer,
+              category: parentQuestion.category,
+              difficulty: parentQuestion.difficulty,
+            }),
+          () => this.getMockFollowUpQuestion(parentQuestion, dto.answer),
+        );
+
+    await this.questionRepository
+      .createQueryBuilder()
+      .update(Question)
+      .set({ order: () => '"order" + 1' })
+      .where('question_set_id = :questionSetId', { questionSetId: parentQuestion.questionSetId })
+      .andWhere('"order" > :order', { order: parentQuestion.order })
+      .execute();
+
+    parentQuestion.questionSet.questionCount += 1;
+    await this.questionSetRepository.save(parentQuestion.questionSet);
+
+    const saved = await this.questionRepository.save(
+      this.questionRepository.create({
+        questionSetId: parentQuestion.questionSetId,
+        parentQuestionId: parentQuestion.id,
+        content: followUp.content,
+        category: followUp.category || parentQuestion.category,
+        difficulty: followUp.difficulty || parentQuestion.difficulty,
+        order: parentQuestion.order + 1,
+        questionType: 'follow_up',
+      }),
+    );
+
+    return this.toFollowUpResponse(saved);
+  }
+
   private toQuestionSetResponse(
     set: QuestionSet,
     questions: Question[],
@@ -188,14 +260,17 @@ export class QuestionService {
       resumeText.includes('디자인 툴');
 
     return questions.map((question, index) => {
-      if (designToolExplicitlyProvided || !this.isDesignToolQuestion(question.content)) {
+      if (
+        (designToolExplicitlyProvided || !this.isDesignToolQuestion(question.content)) &&
+        !this.isUnverifiedExperienceQuestion(question.content, resumeText)
+      ) {
         return question;
       }
 
       return {
         ...question,
         content:
-          '채용공고의 요구사항을 기준으로, 본인 이력서의 개발 경험 중 해당 역할에서 바로 기여할 수 있는 구현 사례를 설명해주세요.',
+          '채용공고의 요구사항에 포함된 기능을 새로 맡게 된다면, 본인 이력서의 개발 경험을 바탕으로 어떤 구조와 순서로 접근할지 설명해주세요.',
         category: 'career_fit',
         difficulty: question.difficulty || difficulty,
         order: question.order || index + 1,
@@ -205,5 +280,62 @@ export class QuestionService {
 
   private isDesignToolQuestion(content: string): boolean {
     return /figma|피그마|디자인\s*툴|ui\s*디자인|디자이너|visual\s*design/i.test(content);
+  }
+
+  private isUnverifiedExperienceQuestion(content: string, resumeText: string): boolean {
+    const normalizedContent = content.toLowerCase();
+    const experienceClaimPatterns = [
+      /개발한 .*과정/,
+      /구현한 .*과정/,
+      /프로젝트에서 .*구현/,
+      /프로젝트에서 .*개발/,
+      /사용한 아키텍처/,
+      /어떤 아키텍처를 사용/,
+      /경험이 있나요/,
+    ];
+    const claimsExperience = experienceClaimPatterns.some((pattern) =>
+      pattern.test(normalizedContent),
+    );
+
+    if (!claimsExperience) {
+      return false;
+    }
+
+    const domainKeywords = [
+      ['payment', '결제'],
+      ['widget', '위젯'],
+      ['checkout', '체크아웃'],
+      ['billing', '빌링'],
+      ['subscription', '구독'],
+    ];
+
+    return domainKeywords.some((keywords) => {
+      const appearsInQuestion = keywords.some((keyword) => normalizedContent.includes(keyword));
+      const appearsInResume = keywords.some((keyword) => resumeText.includes(keyword));
+
+      return appearsInQuestion && !appearsInResume;
+    });
+  }
+
+  private getMockFollowUpQuestion(
+    parentQuestion: Question,
+    _answer: string,
+  ): { content: string; category: string; difficulty: string } {
+    return {
+      content: `${parentQuestion.content}에 대한 답변을 실제 프로젝트 사례로 확장해서, 선택한 방식과 대안 대비 장단점을 설명해주세요.`,
+      category: parentQuestion.category,
+      difficulty: parentQuestion.difficulty,
+    };
+  }
+
+  private toFollowUpResponse(question: Question) {
+    return {
+      questionId: question.id,
+      parentQuestionId: question.parentQuestionId,
+      followUpQuestion: question.content,
+      category: question.category,
+      difficulty: question.difficulty,
+      isFollowUp: question.questionType === 'follow_up',
+    };
   }
 }

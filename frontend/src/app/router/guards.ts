@@ -1,5 +1,6 @@
 import type { NavigationGuardNext, RouteLocationNormalized } from 'vue-router';
 import { useAuthStore } from '@/features/auth';
+import { hasValidStoredAccessToken } from '@/shared/utils/auth-token';
 
 export function authGuard(
   to: RouteLocationNormalized,
@@ -7,13 +8,18 @@ export function authGuard(
   next: NavigationGuardNext,
 ) {
   const authStore = useAuthStore();
+  const hasValidToken = hasValidStoredAccessToken();
 
-  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
+  if (!hasValidToken && authStore.isAuthenticated) {
+    authStore.logout();
+  }
+
+  if (to.meta.requiresAuth && !hasValidToken) {
     next({ path: '/login', query: { redirect: to.fullPath } });
     return;
   }
 
-  if (to.meta.guestOnly && authStore.isAuthenticated) {
+  if (to.meta.guestOnly && hasValidToken) {
     next('/');
     return;
   }

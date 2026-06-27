@@ -18,6 +18,7 @@ export class AnswerResponseDto {
   feedback: AnswerFeedbackDto;
   nextQuestion: CurrentQuestionDto | null;
   progress: ProgressDto;
+  hasFollowUp?: boolean;
   sessionStatus?: string;
   submittedAt: Date;
 }

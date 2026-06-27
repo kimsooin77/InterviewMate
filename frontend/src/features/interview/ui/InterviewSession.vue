@@ -21,7 +21,7 @@
       <p>{{ answerFeedback.explanation }}</p>
       <div class="interview-session__feedback-actions">
         <el-button type="primary" size="large" @click="$emit('continue')">
-          {{ isLastQuestion ? '면접 완료' : '다음 문제' }}
+          {{ continueLabel }}
         </el-button>
       </div>
     </el-card>
@@ -51,6 +51,7 @@ const props = defineProps<{
   isSubmitting: boolean;
   currentAnswer?: string;
   answerFeedback?: AnswerFeedback | null;
+  hasFollowUp?: boolean;
 }>();
 
 defineEmits<{
@@ -59,6 +60,10 @@ defineEmits<{
 }>();
 
 const isLastQuestion = computed(() => props.progress.current === props.progress.total);
+const continueLabel = computed(() => {
+  if (props.hasFollowUp) return '꼬리 질문 보기';
+  return isLastQuestion.value ? '면접 완료' : '다음 문제';
+});
 </script>
 
 <style lang="scss" scoped>

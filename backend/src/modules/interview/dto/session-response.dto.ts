@@ -4,6 +4,8 @@ export class CurrentQuestionDto {
   category: string;
   difficulty: string;
   order: number;
+  isFollowUp: boolean;
+  parentQuestionId: number | null;
 }
 
 export class SessionResponseDto {

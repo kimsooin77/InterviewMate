@@ -90,25 +90,10 @@ const difficultyLabel = computed(() => {
       #ffffff;
     box-shadow: 0 12px 32px rgba(37, 99, 235, 0.08);
 
-    &::before {
-      content: '';
-      position: absolute;
-      top: 18px;
-      bottom: 18px;
-      left: 0;
-      width: 4px;
-      border-radius: 999px;
-      background: #2563eb;
-    }
-
     &--empty {
       border-color: #e5e7eb;
       background: #fafafa;
       box-shadow: none;
-
-      &::before {
-        background: #cbd5e1;
-      }
     }
 
     &-header {

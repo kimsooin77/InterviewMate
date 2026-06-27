@@ -41,6 +41,12 @@ export interface GeneratedQuestion {
   order: number;
 }
 
+export interface GeneratedFollowUpQuestion {
+  content: string;
+  category: string;
+  difficulty: string;
+}
+
 export interface AnswerFeedbackResult {
   isCorrect: boolean;
   explanation: string;

@@ -24,6 +24,7 @@ export const useInterviewStore = defineStore('interview', () => {
   const pendingNextQuestion = ref<CurrentQuestion | null>(null);
   const pendingProgress = ref<Progress | null>(null);
   const pendingCompletion = ref(false);
+  const pendingHasFollowUp = ref(false);
 
   const canGoPrevious = computed(() => progress.value.current > 1);
   const currentAnswer = computed(() => {
@@ -41,6 +42,7 @@ export const useInterviewStore = defineStore('interview', () => {
     pendingNextQuestion.value = null;
     pendingProgress.value = null;
     pendingCompletion.value = false;
+    pendingHasFollowUp.value = false;
     progress.value = {
       current: response.data.currentOrder,
       total: response.data.totalQuestions,
@@ -66,6 +68,7 @@ export const useInterviewStore = defineStore('interview', () => {
       pendingNextQuestion.value = result.nextQuestion;
       pendingProgress.value = result.progress;
       pendingCompletion.value = !result.nextQuestion;
+      pendingHasFollowUp.value = Boolean(result.hasFollowUp);
 
       return result;
     } finally {
@@ -142,6 +145,7 @@ export const useInterviewStore = defineStore('interview', () => {
     pendingNextQuestion.value = null;
     pendingProgress.value = null;
     pendingCompletion.value = false;
+    pendingHasFollowUp.value = false;
     progress.value = { current: 1, total: 0 };
     isSubmitting.value = false;
     isCompleted.value = false;
@@ -152,6 +156,7 @@ export const useInterviewStore = defineStore('interview', () => {
     pendingNextQuestion.value = null;
     pendingProgress.value = null;
     pendingCompletion.value = false;
+    pendingHasFollowUp.value = false;
   }
 
   return {
@@ -165,6 +170,7 @@ export const useInterviewStore = defineStore('interview', () => {
     canGoPrevious,
     currentAnswer,
     latestFeedback,
+    pendingHasFollowUp,
     startSession,
     submitAnswer,
     fetchHistory,

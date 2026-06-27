@@ -39,6 +39,7 @@
       :is-submitting="interviewStore.isSubmitting"
       :current-answer="interviewStore.currentAnswer"
       :answer-feedback="interviewStore.latestFeedback"
+      :has-follow-up="interviewStore.pendingHasFollowUp"
       class="interview-page__session"
       @submit="handleSubmit"
       @continue="interviewStore.continueAfterFeedback"

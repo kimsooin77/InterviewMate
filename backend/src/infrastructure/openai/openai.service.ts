@@ -6,6 +6,7 @@ import {
   AiMode,
   AnswerEvaluationResult,
   AnswerFeedbackResult,
+  GeneratedFollowUpQuestion,
   GeneratedQuestion,
   GenerateQuestionsConfig,
   ReportGenerationInput,
@@ -115,6 +116,9 @@ export class OpenAIService {
         'If a job posting is provided, tailor the questions to the posting requirements, responsibilities, seniority, domain, and tech stack.',
         'Cover both resume-based evidence and job-posting fit. Ask questions that help verify whether the candidate can perform the posted role.',
         'Focus on software developer responsibilities: implementation, architecture, debugging, performance, testing, APIs, data flow, deployment, and collaboration as an engineer.',
+        'Do not assume the candidate has implemented a domain feature only because the job posting mentions it.',
+        'If a domain or product feature appears only in the job posting and not in the resume, ask readiness or approach questions, not past-experience questions.',
+        'Avoid phrases that claim unverified experience, such as "the payment widget you implemented" or "in your project". Prefer "if you were to implement" or "how would you approach".',
         'Do not ask about designer-only work, UI design creation, visual design decisions, or using design tools such as Figma unless the resume explicitly says the candidate used that tool as a developer.',
         'If the posting mentions design collaboration, ask how the developer translated requirements into components or code without assuming design-tool experience.',
         'Return exactly this shape: {"questions":[{"content":"","category":"","difficulty":"","order":1}]}.',
@@ -185,6 +189,28 @@ export class OpenAIService {
         'Return exactly this shape: {"isCorrect":false,"explanation":""}.',
       ].join('\n'),
       JSON.stringify({ question, answer }),
+    );
+  }
+
+  async generateFollowUpQuestion(input: {
+    question: string;
+    answer: string;
+    category?: string;
+    difficulty?: string;
+  }): Promise<GeneratedFollowUpQuestion> {
+    return this.createJsonCompletion<GeneratedFollowUpQuestion>(
+      'generateFollowUpQuestion',
+      [
+        'You generate one follow-up interview question for a software developer interview.',
+        'Return JSON only. Do not return markdown, explanations, or code fences.',
+        'Write the question in Korean.',
+        'The follow-up must be based on the original question and the user answer.',
+        'Ask about implementation details, trade-offs, debugging, performance, testing, architecture, or real project decisions.',
+        'Do not ask designer-only questions or visual design tool questions unless the original question and answer clearly mention developer usage of that tool.',
+        'If the user answer says they do not know, ask a simpler concept-checking follow-up.',
+        'Return exactly this shape: {"content":"","category":"","difficulty":""}.',
+      ].join('\n'),
+      JSON.stringify(input),
     );
   }
 
