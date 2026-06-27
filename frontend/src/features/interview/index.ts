@@ -2,6 +2,7 @@ export { interviewApi } from './api/interview.api';
 export { useInterviewStore } from './model/interview.store';
 export type {
   InterviewSession,
+  InterviewHistoryItem,
   CurrentQuestion,
   AnswerResponse,
   CreateSessionRequest,

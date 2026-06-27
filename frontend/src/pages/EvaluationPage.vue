@@ -36,12 +36,46 @@
         description="보완이 필요한 문항이 없습니다."
       />
 
-      <div v-if="weakEvaluations.length" class="evaluation-page__items">
-        <EvaluationItemCard
-          v-for="item in weakEvaluations"
-          :key="item.questionId"
-          :item="item"
-        />
+      <div v-if="weakEvaluations.length" class="evaluation-page__carousel">
+        <div class="evaluation-page__carousel-header">
+          <strong>보완 카드 {{ activeCardIndex + 1 }} / {{ weakEvaluations.length }}</strong>
+          <div class="evaluation-page__carousel-actions">
+            <el-button circle :disabled="activeCardIndex === 0" @click="scrollEvaluation(-1)">
+              ‹
+            </el-button>
+            <el-button
+              circle
+              :disabled="activeCardIndex >= weakEvaluations.length - 1"
+              @click="scrollEvaluation(1)"
+            >
+              ›
+            </el-button>
+          </div>
+        </div>
+
+        <div
+          ref="evaluationTrackRef"
+          class="evaluation-page__track"
+          @scroll="handleEvaluationScroll"
+        >
+          <div
+            v-for="item in weakEvaluations"
+            :key="item.questionId"
+            class="evaluation-page__slide"
+          >
+            <EvaluationItemCard :item="item" />
+          </div>
+        </div>
+
+        <div class="evaluation-page__dots" aria-hidden="true">
+          <button
+            v-for="(_, index) in weakEvaluations"
+            :key="index"
+            type="button"
+            :class="{ 'is-active': index === activeCardIndex }"
+            @click="scrollToEvaluation(index)"
+          />
+        </div>
       </div>
 
       <div class="evaluation-page__actions">
@@ -60,7 +94,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, computed } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage, ElIcon } from 'element-plus';
 import { Loading } from '@element-plus/icons-vue';
@@ -74,6 +108,8 @@ const WEAK_SCORE_THRESHOLD = 80;
 const route = useRoute();
 const router = useRouter();
 const evaluationStore = useEvaluationStore();
+const evaluationTrackRef = ref<HTMLElement | null>(null);
+const activeCardIndex = ref(0);
 
 const sessionId = computed(() => Number(route.params.sessionId));
 const weakEvaluations = computed(() =>
@@ -95,6 +131,39 @@ onMounted(async () => {
     }
   }
 });
+
+function scrollEvaluation(direction: number) {
+  scrollToEvaluation(activeCardIndex.value + direction);
+}
+
+function scrollToEvaluation(index: number) {
+  const track = evaluationTrackRef.value;
+  if (!track) return;
+
+  const safeIndex = Math.max(0, Math.min(index, weakEvaluations.value.length - 1));
+  const slide = track.children.item(safeIndex) as HTMLElement | null;
+  if (!slide) return;
+
+  activeCardIndex.value = safeIndex;
+  track.scrollTo({
+    left: slide.offsetLeft - track.offsetLeft,
+    behavior: 'smooth',
+  });
+}
+
+function handleEvaluationScroll() {
+  const track = evaluationTrackRef.value;
+  if (!track) return;
+
+  const slideWidth = track.clientWidth;
+  if (slideWidth <= 0) return;
+
+  const nextIndex = Math.round(track.scrollLeft / slideWidth);
+  activeCardIndex.value = Math.max(
+    0,
+    Math.min(nextIndex, weakEvaluations.value.length - 1),
+  );
+}
 </script>
 
 <style lang="scss" scoped>
@@ -115,11 +184,65 @@ onMounted(async () => {
     margin-top: 20px;
   }
 
-  &__items {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
+  &__carousel {
     margin-top: 24px;
+  }
+
+  &__carousel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+
+    strong {
+      color: #1f2a44;
+    }
+  }
+
+  &__carousel-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  &__track {
+    display: flex;
+    gap: 16px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
+
+  &__slide {
+    flex: 0 0 100%;
+    scroll-snap-align: start;
+  }
+
+  &__dots {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 14px;
+
+    button {
+      width: 8px;
+      height: 8px;
+      padding: 0;
+      border: 0;
+      border-radius: 999px;
+      background: #cbd5e1;
+      cursor: pointer;
+
+      &.is-active {
+        width: 22px;
+        background: #2563eb;
+      }
+    }
   }
 
   &__actions {

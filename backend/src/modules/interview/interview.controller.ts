@@ -1,5 +1,6 @@
 import {
   Controller,
+  Get,
   Post,
   Param,
   Body,
@@ -17,6 +18,11 @@ import { SubmitAnswerDto } from './dto/submit-answer.dto';
 @UseGuards(JwtAuthGuard)
 export class InterviewController {
   constructor(private readonly interviewService: InterviewService) {}
+
+  @Get('history')
+  async findHistory(@CurrentUser() user: CurrentUserData) {
+    return this.interviewService.findHistory(user.id);
+  }
 
   @Post()
   async createSession(

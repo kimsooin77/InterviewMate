@@ -23,13 +23,15 @@
         <el-timeline-item
           v-for="(career, index) in resume.careers"
           :key="index"
-          :timestamp="`${career.startDate} ~ ${career.endDate}`"
+          :timestamp="formatCareerPeriod(career)"
           placement="top"
         >
           <el-card shadow="never">
             <h4 style="margin: 0">{{ career.position }}</h4>
             <p style="margin: 4px 0 0; color: #909399">{{ career.company }}</p>
-            <p style="margin: 8px 0 0; font-size: 14px">{{ career.description }}</p>
+            <p v-if="career.description" style="margin: 8px 0 0; font-size: 14px">
+              {{ career.description }}
+            </p>
           </el-card>
         </el-timeline-item>
       </el-timeline>
@@ -44,11 +46,27 @@
           class="resume-analysis__project-card"
         >
           <h4 style="margin: 0">{{ project.name }}</h4>
-          <p style="margin: 4px 0; color: #909399; font-size: 13px">
-            {{ project.role }} | {{ project.startDate }} ~ {{ project.endDate }}
+          <p
+            v-if="formatProjectMeta(project)"
+            style="margin: 4px 0; color: #909399; font-size: 13px"
+          >
+            {{ formatProjectMeta(project) }}
           </p>
-          <p style="font-size: 14px">{{ project.description }}</p>
-          <SkillTagList v-if="project.skills" :skills="project.skills" />
+          <p v-if="project.description" style="font-size: 14px">
+            {{ project.description }}
+          </p>
+          <SkillTagList
+            v-if="getProjectSkills(project).length > 0"
+            :skills="getProjectSkills(project)"
+          />
+          <ul
+            v-if="project.responsibilities?.length"
+            class="resume-analysis__responsibilities"
+          >
+            <li v-for="responsibility in project.responsibilities" :key="responsibility">
+              {{ responsibility }}
+            </li>
+          </ul>
         </el-card>
       </div>
       <p v-else class="resume-analysis__empty">추출된 프로젝트가 없습니다</p>
@@ -59,7 +77,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import SkillTagList from './SkillTagList.vue';
-import type { Resume } from '../model/resume.types';
+import type { Career, Project, Resume } from '../model/resume.types';
 
 const props = defineProps<{
   resume: Resume;
@@ -89,6 +107,32 @@ const statusText = computed(() => {
   };
   return map[props.resume.status] || props.resume.status;
 });
+
+function formatCareerPeriod(career: Career): string {
+  return career.duration || formatPeriod(career.startDate, career.endDate);
+}
+
+function formatProjectMeta(project: Project): string {
+  return [project.role, project.duration || formatPeriod(project.startDate, project.endDate)]
+    .filter(Boolean)
+    .join(' | ');
+}
+
+function formatPeriod(startDate?: string, endDate?: string): string {
+  if (startDate && endDate) {
+    return `${startDate} ~ ${endDate}`;
+  }
+
+  return startDate || endDate || '';
+}
+
+function getProjectSkills(project: Project): string[] {
+  if (project.skills?.length) {
+    return project.skills;
+  }
+
+  return project.environment || [];
+}
 </script>
 
 <style lang="scss" scoped>
@@ -108,6 +152,14 @@ const statusText = computed(() => {
   &__empty {
     font-size: 14px;
     color: #909399;
+  }
+
+  &__responsibilities {
+    margin: 12px 0 0;
+    padding-left: 18px;
+    color: #606266;
+    font-size: 14px;
+    line-height: 1.6;
   }
 }
 </style>

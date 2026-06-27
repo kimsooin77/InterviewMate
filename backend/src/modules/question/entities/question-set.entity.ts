@@ -29,6 +29,9 @@ export class QuestionSet {
   @Column({ name: 'question_count', type: 'smallint' })
   questionCount: number;
 
+  @Column({ name: 'job_posting', type: 'text', nullable: true })
+  jobPosting: string | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 

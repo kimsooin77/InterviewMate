@@ -14,6 +14,7 @@ export interface EvaluationItem {
   feedback: string;
   strengths: string[];
   improvements: string[];
+  idealAnswer: string;
 }
 
 export interface Evaluation {

@@ -4,10 +4,8 @@ import {
   ForbiddenException,
   ConflictException,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import OpenAI from 'openai';
 import { Evaluation } from './entities/evaluation.entity';
 import { EvaluationItem } from './entities/evaluation-item.entity';
 import { InterviewSession } from '../interview/entities/interview-session.entity';
@@ -16,15 +14,11 @@ import { CreateEvaluationDto } from './dto/create-evaluation.dto';
 import { EvaluationResponseDto } from './dto/evaluation-response.dto';
 import { EvaluationItemResponseDto } from './dto/evaluation-item-response.dto';
 import { ReportService } from '../report/report.service';
-import { getOpenAIConfig } from '../../config/openai.config';
+import { OpenAIService } from '../../infrastructure/openai/openai.service';
+import { AnswerEvaluationResult } from '../../infrastructure/openai/openai.types';
 
 @Injectable()
 export class EvaluationService {
-  private readonly openai: OpenAI;
-  private readonly openaiModel: string;
-  private readonly openaiTemperature: number;
-  private readonly useMockAI: boolean;
-
   constructor(
     @InjectRepository(Evaluation)
     private readonly evaluationRepository: Repository<Evaluation>,
@@ -34,15 +28,9 @@ export class EvaluationService {
     private readonly sessionRepository: Repository<InterviewSession>,
     @InjectRepository(InterviewAnswer)
     private readonly answerRepository: Repository<InterviewAnswer>,
-    private readonly configService: ConfigService,
     private readonly reportService: ReportService,
-  ) {
-    const openaiConfig = getOpenAIConfig(configService);
-    this.openai = new OpenAI({ apiKey: openaiConfig.apiKey });
-    this.openaiModel = openaiConfig.model;
-    this.openaiTemperature = openaiConfig.temperature;
-    this.useMockAI = configService.get<string>('USE_MOCK_AI', 'false') === 'true';
-  }
+    private readonly openaiService: OpenAIService,
+  ) {}
 
   async create(
     userId: number,
@@ -78,16 +66,16 @@ export class EvaluationService {
       order: { questionId: 'ASC' },
     });
 
-    const evaluationResults = this.useMockAI
+    const evaluationResults = this.openaiService.isMockMode()
       ? answers.map(() => this.getMockEvaluationResult())
-      : await Promise.all(
-          answers.map((answer) =>
-            this.callOpenAIEvaluation(answer.question.content, answer.content),
-          ),
+      : await this.openaiService.withMockFallback(
+          'evaluation.evaluateAnswers',
+          () => this.openaiService.evaluateAnswers(session, answers),
+          () => answers.map(() => this.getMockEvaluationResult()),
         );
 
     const overallScore = Math.round(
-      evaluationResults.reduce((sum, r) => sum + r.totalScore, 0) /
+      evaluationResults.reduce((sum, result) => sum + result.totalScore, 0) /
         evaluationResults.length,
     );
 
@@ -108,6 +96,7 @@ export class EvaluationService {
         feedback: evaluationResults[index].feedback,
         strengths: evaluationResults[index].strengths,
         improvements: evaluationResults[index].improvements,
+        idealAnswer: evaluationResults[index].idealAnswer || '',
       }),
     );
 
@@ -154,6 +143,7 @@ export class EvaluationService {
         feedback: item.feedback,
         strengths: item.strengths,
         improvements: item.improvements,
+        idealAnswer: item.idealAnswer || '',
       }));
 
     return {
@@ -172,6 +162,7 @@ export class EvaluationService {
   ): EvaluationResponseDto {
     const itemResponses: EvaluationItemResponseDto[] = items.map((item) => {
       const answer = answers.find((a) => a.questionId === item.questionId);
+
       return {
         questionId: item.questionId,
         question: answer!.question.content,
@@ -181,6 +172,7 @@ export class EvaluationService {
         feedback: item.feedback,
         strengths: item.strengths,
         improvements: item.improvements,
+        idealAnswer: item.idealAnswer || '',
       };
     });
 
@@ -193,13 +185,7 @@ export class EvaluationService {
     };
   }
 
-  private getMockEvaluationResult(): {
-    scores: { accuracy: number; depth: number; structure: number; communication: number };
-    totalScore: number;
-    feedback: string;
-    strengths: string[];
-    improvements: string[];
-  } {
+  private getMockEvaluationResult(): AnswerEvaluationResult {
     const accuracy = 70 + Math.floor(Math.random() * 20);
     const depth = 65 + Math.floor(Math.random() * 25);
     const structure = 70 + Math.floor(Math.random() * 20);
@@ -209,60 +195,11 @@ export class EvaluationService {
     return {
       scores: { accuracy, depth, structure, communication },
       totalScore,
-      feedback: '핵심 개념을 잘 이해하고 있으며, 실무 경험을 바탕으로 구체적인 답변을 제공했습니다. 더 깊이 있는 사례와 비교 분석이 추가되면 좋겠습니다.',
-      strengths: ['핵심 개념에 대한 정확한 이해', '논리적인 답변 구조'],
-      improvements: ['실무 사례 보강 필요', '성능 관점의 분석 추가'],
+      idealAnswer:
+        'SNS 간편 로그인 인증 시스템을 개발할 때 백엔드에서는 Passport Strategy로 각 SNS 제공자의 인증 흐름을 분리하고, Redis는 인증 과정에서 필요한 임시 상태값과 토큰 정보를 빠르게 저장하고 검증하는 용도로 사용했습니다. 특히 로컬 환경과 배포된 WAS 환경에서 콜백 경로와 파라미터 전달 방식이 달라지는 문제가 있었고, 원격 WAS와 기간계를 거쳐 다시 로컬 WAS로 돌아오는 과정에서 redirect URI와 state 값이 일관되게 유지되도록 처리하는 것이 어려웠습니다. 이를 해결하기 위해 환경별 callback URL과 파라미터 가공 로직을 분리하고, Redis에 저장한 상태값을 기준으로 요청의 출처와 흐름을 검증하도록 구성했습니다. 이 경험을 통해 외부 인증 연동에서는 단순히 로그인 성공 여부뿐 아니라 환경별 라우팅, 보안 상태값 관리, 장애 추적이 가능한 구조가 중요하다는 점을 배웠습니다.',
+      feedback: '핵심 개념을 이해하고 있으며, 실무 경험을 바탕으로 조금 더 구체적인 예시를 보강하면 좋습니다.',
+      strengths: ['핵심 개념 이해', '논리적인 답변 구조'],
+      improvements: ['실무 사례 보강 필요', '성능 관점 분석 추가'],
     };
-  }
-
-  private async callOpenAIEvaluation(
-    question: string,
-    answer: string,
-  ): Promise<{
-    scores: { accuracy: number; depth: number; structure: number; communication: number };
-    totalScore: number;
-    feedback: string;
-    strengths: string[];
-    improvements: string[];
-  }> {
-    const systemPrompt = `You are a senior frontend technical interviewer evaluating a candidate's answer.
-Your task is to evaluate the answer across multiple criteria and provide constructive feedback.
-
-Evaluation criteria (each scored 0-100):
-1. accuracy: Technical correctness of the answer
-2. depth: Level of detail and specificity
-3. structure: Logical organization and flow of the answer
-4. communication: Clarity and effectiveness of explanation
-
-Rules:
-- Be objective and fair in scoring.
-- Provide specific, actionable feedback.
-- Identify concrete strengths and areas for improvement.
-- Reference specific parts of the answer in your feedback.
-- All feedback should be in Korean.
-- Return the result in the specified JSON format.`;
-
-    const userPrompt = `질문: ${question}
-
-답변: ${answer}
-
-위 답변을 평가해주세요.`;
-
-    const response = await this.openai.chat.completions.create({
-      model: this.openaiModel,
-      temperature: this.openaiTemperature,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-      response_format: { type: 'json_object' },
-    });
-
-    const content = response.choices[0]?.message?.content;
-    if (!content) {
-      throw new Error('OpenAI 응답이 비어있습니다.');
-    }
-
-    return JSON.parse(content);
   }
 }

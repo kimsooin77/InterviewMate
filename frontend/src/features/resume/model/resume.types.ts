@@ -1,18 +1,22 @@
 export interface Career {
   company: string;
   position: string;
-  startDate: string;
-  endDate: string;
+  startDate?: string;
+  endDate?: string;
+  duration?: string;
   description: string;
 }
 
 export interface Project {
   name: string;
-  role: string;
-  startDate: string;
-  endDate: string;
+  role?: string;
+  startDate?: string;
+  endDate?: string;
+  duration?: string;
   description: string;
-  skills: string[];
+  skills?: string[];
+  environment?: string[];
+  responsibilities?: string[];
 }
 
 export interface Resume {

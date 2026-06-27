@@ -6,6 +6,7 @@ import { Report } from './entities/report.entity';
 import { InterviewSession } from '../interview/entities/interview-session.entity';
 import { Evaluation } from '../evaluation/entities/evaluation.entity';
 import { EvaluationItem } from '../evaluation/entities/evaluation-item.entity';
+import { OpenAIInfrastructureModule } from '../../infrastructure/openai/openai.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { EvaluationItem } from '../evaluation/entities/evaluation-item.entity';
       Evaluation,
       EvaluationItem,
     ]),
+    OpenAIInfrastructureModule,
   ],
   controllers: [ReportController],
   providers: [ReportService],

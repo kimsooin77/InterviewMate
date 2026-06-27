@@ -19,6 +19,17 @@
       />
     </el-form-item>
 
+    <el-form-item label="채용공고">
+      <el-input
+        v-model="form.jobPosting"
+        type="textarea"
+        :rows="10"
+        maxlength="12000"
+        show-word-limit
+        placeholder="기업 채용공고의 주요 업무, 자격요건, 우대사항, 기술스택을 붙여넣어 주세요."
+      />
+    </el-form-item>
+
     <el-form-item>
       <el-button
         type="primary"
@@ -49,13 +60,17 @@ const emit = defineEmits<{
 const form = reactive({
   difficulty: 'medium',
   count: 10,
+  jobPosting: '',
 });
 
 function handleGenerate() {
+  const jobPosting = form.jobPosting.trim();
+
   emit('generate', {
     resumeId: props.resumeId,
     difficulty: form.difficulty,
     count: form.count,
+    ...(jobPosting ? { jobPosting } : {}),
   });
 }
 </script>

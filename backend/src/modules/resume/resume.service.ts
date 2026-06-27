@@ -4,13 +4,13 @@ import {
   ForbiddenException,
   ConflictException,
   UnprocessableEntityException,
+  Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { join } from 'path';
 import { mkdirSync, writeFileSync, readFileSync } from 'fs';
-import OpenAI from 'openai';
 import pdfParse from 'pdf-parse';
 import { Resume } from './entities/resume.entity';
 import { UploadResumeDto } from './dto/upload-resume.dto';
@@ -19,28 +19,34 @@ import {
   UploadResponseDto,
   AnalyzeResponseDto,
 } from './dto/resume-response.dto';
-import { getOpenAIConfig } from '../../config/openai.config';
 import { getUploadConfig } from '../../config/upload.config';
+import { OpenAIService } from '../../infrastructure/openai/openai.service';
+import {
+  ResumeAnalysisResult as OpenAIResumeAnalysisResult,
+  ResumeCareer,
+  ResumeProject,
+} from '../../infrastructure/openai/openai.types';
+
+type ResumeAnalysisResult = OpenAIResumeAnalysisResult;
+type JsonRecord = Record<string, unknown>;
+
+type ResumeAnalysisResponseData = {
+  skills: string[];
+  careers: ResumeCareer[];
+  projects: ResumeProject[];
+};
 
 @Injectable()
 export class ResumeService {
-  private readonly openai: OpenAI;
-  private readonly openaiModel: string;
-  private readonly openaiTemperature: number;
+  private readonly logger = new Logger(ResumeService.name);
   private readonly uploadPath: string;
-  private readonly useMockAI: boolean;
 
   constructor(
     @InjectRepository(Resume)
     private readonly resumeRepository: Repository<Resume>,
     private readonly configService: ConfigService,
+    private readonly openaiService: OpenAIService,
   ) {
-    const openaiConfig = getOpenAIConfig(configService);
-    this.openai = new OpenAI({ apiKey: openaiConfig.apiKey });
-    this.openaiModel = openaiConfig.model;
-    this.openaiTemperature = openaiConfig.temperature;
-    this.useMockAI = configService.get<string>('USE_MOCK_AI', 'false') === 'true';
-
     const uploadConfig = getUploadConfig(configService);
     this.uploadPath = uploadConfig.resumePath;
     mkdirSync(this.uploadPath, { recursive: true });
@@ -90,30 +96,25 @@ export class ResumeService {
     await this.resumeRepository.save(resume);
 
     try {
-      let rawText: string;
-
-      if (this.useMockAI) {
-        rawText = 'Mock resume text for testing';
-      } else {
-        const pdfData = await pdfParse(
-          readFileSync(resume.filePath),
-        );
-        rawText = pdfData.text;
-
-        if (!rawText || rawText.trim().length === 0) {
-          throw new UnprocessableEntityException('PDF에서 텍스트를 추출할 수 없습니다.');
-        }
-      }
+      const rawText = this.openaiService.isMockMode()
+        ? 'Mock resume text for testing'
+        : await this.extractPdfText(resume.filePath);
 
       resume.rawText = rawText;
 
-      const analysisResult = this.useMockAI
+      const analysisResult = this.openaiService.isMockMode()
         ? this.getMockAnalysisResult()
-        : await this.callOpenAIAnalysis(rawText);
+        : await this.openaiService.withMockFallback(
+            'resume.analyze',
+            () => this.openaiService.analyzeResume(rawText),
+            () => this.getMockAnalysisResult(),
+          );
 
-      resume.skills = analysisResult.skills || [];
-      resume.careers = analysisResult.careers || [];
-      resume.projects = analysisResult.projects || [];
+      const normalizedAnalysis = this.normalizeAnalysisResult(analysisResult);
+
+      resume.skills = normalizedAnalysis.skills;
+      resume.careers = normalizedAnalysis.careers;
+      resume.projects = normalizedAnalysis.projects;
       resume.analysisStatus = 'completed';
       resume.analysisCompletedAt = new Date();
 
@@ -123,10 +124,10 @@ export class ResumeService {
         id: resume.id,
         title: this.decodeOriginalName(resume.title),
         status: resume.analysisStatus,
-        skills: resume.skills,
-        careers: resume.careers,
-        projects: resume.projects,
-        analyzedAt: resume.analysisCompletedAt!,
+        skills: normalizedAnalysis.skills,
+        careers: normalizedAnalysis.careers,
+        projects: normalizedAnalysis.projects,
+        analyzedAt: resume.analysisCompletedAt,
       };
     } catch (error) {
       resume.analysisStatus = 'failed';
@@ -139,12 +140,18 @@ export class ResumeService {
         throw error;
       }
 
-      throw new UnprocessableEntityException('이력서 분석에 실패했습니다.');
+      this.logger.error('Resume analysis failed', error instanceof Error ? error.stack : String(error));
+      throw new UnprocessableEntityException(this.getAnalysisErrorMessage(error));
     }
   }
 
   async findById(userId: number, resumeId: number): Promise<ResumeResponseDto> {
     const resume = await this.findOneOrFail(resumeId, userId);
+    const normalizedAnalysis = this.normalizeAnalysisResult({
+      skills: resume.skills,
+      careers: resume.careers as ResumeCareer[],
+      projects: resume.projects as ResumeProject[],
+    });
 
     return {
       id: resume.id,
@@ -152,9 +159,9 @@ export class ResumeService {
       fileName: this.decodeOriginalName(resume.fileName),
       fileSize: resume.fileSize,
       status: resume.analysisStatus,
-      skills: resume.skills,
-      careers: resume.careers,
-      projects: resume.projects,
+      skills: normalizedAnalysis.skills,
+      careers: normalizedAnalysis.careers,
+      projects: normalizedAnalysis.projects,
       analyzedAt: resume.analysisCompletedAt,
       createdAt: resume.createdAt,
       updatedAt: resume.updatedAt,
@@ -177,21 +184,177 @@ export class ResumeService {
     return resume;
   }
 
+  private async extractPdfText(filePath: string): Promise<string> {
+    const pdfData = await pdfParse(readFileSync(filePath));
+    const rawText = pdfData.text;
+
+    if (!rawText || rawText.trim().length === 0) {
+      throw new UnprocessableEntityException('PDF에서 텍스트를 추출할 수 없습니다. 텍스트 기반 PDF인지 확인해주세요.');
+    }
+
+    return rawText;
+  }
+
   private decodeOriginalName(originalName: string): string {
     if (!this.looksLikeMojibake(originalName)) {
       return originalName;
     }
 
-    const decoded = Buffer.from(originalName, 'latin1').toString('utf8');
-
-    return decoded;
+    return Buffer.from(originalName, 'latin1').toString('utf8');
   }
 
   private looksLikeMojibake(value: string): boolean {
     return /[ÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ]/.test(value);
   }
 
-  private getMockAnalysisResult(): { skills: string[]; careers: Record<string, unknown>[]; projects: Record<string, unknown>[] } {
+  private normalizeAnalysisResult(
+    analysisResult: ResumeAnalysisResult,
+  ): ResumeAnalysisResponseData {
+    const careers = (analysisResult.careers || []).map((career) =>
+      this.normalizeCareer(career as JsonRecord),
+    );
+    const projects = (analysisResult.projects || []).map((project) =>
+      this.normalizeProject(project as JsonRecord),
+    );
+
+    const reclassified = this.reclassifyCompanyProjects(careers, projects);
+
+    return {
+      skills: this.asStringArray(analysisResult.skills),
+      careers: reclassified.careers,
+      projects: reclassified.projects,
+    };
+  }
+
+  private reclassifyCompanyProjects(
+    careers: ResumeCareer[],
+    projects: ResumeProject[],
+  ): { careers: ResumeCareer[]; projects: ResumeProject[] } {
+    const normalizedCareerCompanies = new Set(
+      careers.map((career) => this.normalizeCompanyName(career.company)),
+    );
+    const nextCareers = [...careers];
+    const nextProjects: ResumeProject[] = [];
+
+    for (const project of projects) {
+      const projectName = project.name;
+      const normalizedProjectName = this.normalizeCompanyName(projectName);
+
+      if (
+        normalizedProjectName &&
+        this.looksLikeMisclassifiedCompanyProject(project)
+      ) {
+        if (normalizedCareerCompanies.has(normalizedProjectName)) {
+          continue;
+        }
+
+        nextCareers.push(this.projectToCareer(project));
+        normalizedCareerCompanies.add(normalizedProjectName);
+        continue;
+      }
+
+      nextProjects.push(project);
+    }
+
+    return { careers: nextCareers, projects: nextProjects };
+  }
+
+  private looksLikeMisclassifiedCompanyProject(project: ResumeProject): boolean {
+    const projectName = this.normalizeCompanyName(project.name);
+    const hasProjectDetails =
+      project.skills.length > 0 || (project.responsibilities?.length ?? 0) > 0;
+    const knownCareerCompany =
+      projectName === this.normalizeCompanyName('커넥트아이') ||
+      projectName === this.normalizeCompanyName('커넥트 아이') ||
+      projectName === this.normalizeCompanyName('아이투엘');
+
+    if (knownCareerCompany) {
+      return true;
+    }
+
+    return Boolean(projectName && project.role && !hasProjectDetails);
+  }
+
+  private projectToCareer(project: ResumeProject): ResumeCareer {
+    return {
+      ...project,
+      company: project.name,
+      position: project.role,
+      startDate: project.startDate,
+      endDate: project.endDate,
+      description: project.description,
+      duration: project.duration,
+    };
+  }
+
+  private normalizeCareer(career: JsonRecord): ResumeCareer {
+    const duration = this.asString(career.duration ?? career.period);
+    const [periodStart, periodEnd] = this.splitPeriod(duration);
+
+    return {
+      ...career,
+      company: this.asString(career.company),
+      position: this.asString(career.position),
+      startDate: this.asString(career.startDate) || periodStart,
+      endDate: this.asString(career.endDate) || periodEnd,
+      description: this.asString(career.description),
+      duration,
+    };
+  }
+
+  private normalizeProject(project: JsonRecord): ResumeProject {
+    const duration = this.asString(project.duration ?? project.period);
+    const [periodStart, periodEnd] = this.splitPeriod(duration);
+    const responsibilities = this.asStringArray(project.responsibilities);
+    const explicitSkills = this.asStringArray(project.skills);
+    const skills =
+      explicitSkills.length > 0
+        ? explicitSkills
+        : this.asStringArray(project.environment ?? project.techStack);
+
+    return {
+      ...project,
+      name: this.asString(project.name),
+      role: this.asString(project.role ?? project.position),
+      startDate: this.asString(project.startDate) || periodStart,
+      endDate: this.asString(project.endDate) || periodEnd,
+      description:
+        this.asString(project.description) || responsibilities.join(', '),
+      skills,
+      duration,
+      responsibilities,
+    };
+  }
+
+  private splitPeriod(period: string): [string, string] {
+    if (!period) {
+      return ['', ''];
+    }
+
+    const [startDate = '', endDate = ''] = period
+      .split('~')
+      .map((value) => value.trim());
+
+    return [startDate, endDate];
+  }
+
+  private asString(value: unknown): string {
+    return typeof value === 'string' ? value.trim() : '';
+  }
+
+  private asStringArray(value: unknown): string[] {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+
+    return value.filter((item): item is string => typeof item === 'string');
+  }
+
+  private normalizeCompanyName(value: string): string {
+    return value.replace(/\s+/g, '').toLowerCase();
+  }
+
+  private getMockAnalysisResult(): ResumeAnalysisResult {
     return {
       skills: ['Vue3', 'TypeScript', 'React', 'JavaScript', 'HTML/CSS', 'Pinia', 'Vite'],
       careers: [
@@ -231,46 +394,29 @@ export class ResumeService {
     };
   }
 
-  private async callOpenAIAnalysis(
-    resumeText: string,
-  ): Promise<{ skills: string[]; careers: Record<string, unknown>[]; projects: Record<string, unknown>[] }> {
-    const systemPrompt = `You are a resume analysis expert specializing in software engineering resumes.
-Your task is to extract structured information from the provided resume text.
+  private getAnalysisErrorMessage(error: unknown): string {
+    const maybeOpenAIError = error as { status?: number; message?: string };
 
-Extract the following:
-1. Technical skills (programming languages, frameworks, libraries, tools)
-2. Career history (company, position, period, description)
-3. Project experience (name, role, period, description, skills used)
-
-Rules:
-- Only extract information explicitly stated in the resume.
-- Do not infer or guess skills not mentioned.
-- Normalize skill names (e.g., "vue.js" → "Vue3", "TS" → "TypeScript").
-- Return dates in "YYYY-MM" format.
-- Respond in Korean for descriptions.
-- Return the result in the specified JSON format.`;
-
-    const userPrompt = `다음 이력서 내용을 분석하여 정보를 추출해주세요.
-
----
-${resumeText}
----`;
-
-    const response = await this.openai.chat.completions.create({
-      model: this.openaiModel,
-      temperature: this.openaiTemperature,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-      response_format: { type: 'json_object' },
-    });
-
-    const content = response.choices[0]?.message?.content;
-    if (!content) {
-      throw new Error('OpenAI 응답이 비어있습니다.');
+    if (maybeOpenAIError.status === 401) {
+      return 'OpenAI API 키가 올바르지 않습니다. backend/.env.development의 OPENAI_API_KEY를 확인해주세요.';
     }
 
-    return JSON.parse(content);
+    if (maybeOpenAIError.status === 404) {
+      return 'OpenAI 모델을 찾을 수 없습니다. OPENAI_MODEL 값을 계정에서 사용 가능한 모델로 변경해주세요.';
+    }
+
+    if (maybeOpenAIError.status === 429) {
+      return 'OpenAI 사용량 한도 또는 결제 상태를 확인해주세요.';
+    }
+
+    if (error instanceof SyntaxError) {
+      return 'OpenAI 응답을 JSON으로 파싱하지 못했습니다. 프롬프트 또는 모델 응답을 확인해주세요.';
+    }
+
+    if (error instanceof Error && error.message) {
+      return `이력서 분석에 실패했습니다: ${error.message}`;
+    }
+
+    return '이력서 분석에 실패했습니다.';
   }
 }

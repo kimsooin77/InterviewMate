@@ -46,3 +46,19 @@ export interface SubmitAnswerRequest {
   questionId: number;
   content: string;
 }
+
+export interface InterviewHistoryItem {
+  id: number;
+  questionSetId: number;
+  resumeId: number;
+  resumeTitle: string;
+  status: string;
+  difficulty: string;
+  totalQuestions: number;
+  answeredCount: number;
+  jobPostingApplied: boolean;
+  hasEvaluation: boolean;
+  overallScore: number | null;
+  startedAt: string;
+  completedAt: string | null;
+}

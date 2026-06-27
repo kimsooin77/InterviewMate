@@ -4,39 +4,27 @@ import {
   ForbiddenException,
   ConflictException,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import OpenAI from 'openai';
 import { QuestionSet } from './entities/question-set.entity';
 import { Question } from './entities/question.entity';
 import { GenerateQuestionsDto } from './dto/generate-questions.dto';
 import { QuestionSetResponseDto } from './dto/question-set-response.dto';
 import { QuestionResponseDto } from './dto/question-response.dto';
 import { ResumeService } from '../resume/resume.service';
-import { getOpenAIConfig } from '../../config/openai.config';
+import { OpenAIService } from '../../infrastructure/openai/openai.service';
+import { GeneratedQuestion, ResumeAnalysisResult } from '../../infrastructure/openai/openai.types';
 
 @Injectable()
 export class QuestionService {
-  private readonly openai: OpenAI;
-  private readonly openaiModel: string;
-  private readonly openaiTemperature: number;
-  private readonly useMockAI: boolean;
-
   constructor(
     @InjectRepository(QuestionSet)
     private readonly questionSetRepository: Repository<QuestionSet>,
     @InjectRepository(Question)
     private readonly questionRepository: Repository<Question>,
     private readonly resumeService: ResumeService,
-    private readonly configService: ConfigService,
-  ) {
-    const openaiConfig = getOpenAIConfig(configService);
-    this.openai = new OpenAI({ apiKey: openaiConfig.apiKey });
-    this.openaiModel = openaiConfig.model;
-    this.openaiTemperature = openaiConfig.temperature;
-    this.useMockAI = configService.get<string>('USE_MOCK_AI', 'false') === 'true';
-  }
+    private readonly openaiService: OpenAIService,
+  ) {}
 
   async generate(
     userId: number,
@@ -45,26 +33,37 @@ export class QuestionService {
     const resume = await this.resumeService.findById(userId, dto.resumeId);
 
     if (resume.status !== 'completed') {
-      throw new ConflictException('이력서가 분석되지 않은 상태입니다.');
+      throw new ConflictException('이력서가 아직 분석되지 않았습니다.');
     }
 
     const difficulty = dto.difficulty || 'medium';
-    const count = dto.count || 10;
+    const requestedCount = dto.count || 10;
+    const jobPosting = dto.jobPosting?.trim() || null;
 
-    const generatedQuestions = this.useMockAI
-      ? this.getMockQuestions(difficulty, count)
-      : await this.callOpenAIGeneration(
-          resume.skills,
-          resume.careers,
-          resume.projects,
-          difficulty,
-          count,
+    const resumeAnalysis: ResumeAnalysisResult = {
+      skills: resume.skills,
+      careers: resume.careers as unknown as ResumeAnalysisResult['careers'],
+      projects: resume.projects as unknown as ResumeAnalysisResult['projects'],
+    };
+
+    const generatedQuestions = this.openaiService.isMockMode()
+      ? this.getMockQuestions(difficulty, requestedCount, jobPosting)
+      : await this.openaiService.withMockFallback(
+          'question.generate',
+          () =>
+            this.openaiService.generateQuestions(resumeAnalysis, {
+              difficulty,
+              count: requestedCount,
+              jobPosting: jobPosting || undefined,
+            }),
+          () => this.getMockQuestions(difficulty, requestedCount, jobPosting),
         );
 
     const questionSet = this.questionSetRepository.create({
       resumeId: dto.resumeId,
       difficulty,
       questionCount: generatedQuestions.length,
+      jobPosting,
     });
 
     const savedSet = await this.questionSetRepository.save(questionSet);
@@ -120,6 +119,7 @@ export class QuestionService {
       resumeId: set.resumeId,
       difficulty: set.difficulty,
       questionCount: set.questionCount,
+      jobPosting: set.jobPosting || null,
       questions: questions.map(this.toQuestionResponse),
       createdAt: set.createdAt,
     };
@@ -140,80 +140,31 @@ export class QuestionService {
   private getMockQuestions(
     difficulty: string,
     count: number,
-  ): { content: string; category: string; difficulty: string; order: number }[] {
-    const mockPool = [
+    jobPosting?: string | null,
+  ): GeneratedQuestion[] {
+    const mockPool: GeneratedQuestion[] = [
       { content: 'Vue3의 Composition API와 Options API의 차이점을 설명해주세요.', category: 'framework', difficulty, order: 1 },
-      { content: 'TypeScript에서 제네릭을 활용한 경험이 있다면 설명해주세요.', category: 'language', difficulty, order: 2 },
+      { content: 'TypeScript에서 제네릭을 사용한 경험이 있다면 설명해주세요.', category: 'language', difficulty, order: 2 },
       { content: 'Pinia와 Vuex의 차이점과 Pinia를 선택한 이유를 설명해주세요.', category: 'framework', difficulty, order: 3 },
       { content: '웹 성능 최적화를 위해 적용한 방법이 있다면 설명해주세요.', category: 'performance', difficulty, order: 4 },
       { content: 'SPA에서 라우팅을 구현할 때 고려해야 할 사항은 무엇인가요?', category: 'architecture', difficulty, order: 5 },
-      { content: 'CSS-in-JS와 전통적 CSS 방식의 장단점을 비교해주세요.', category: 'css', difficulty, order: 6 },
+      { content: 'CSS-in-JS와 전통적인 CSS 방식의 장단점을 비교해주세요.', category: 'css', difficulty, order: 6 },
       { content: 'React와 Vue의 렌더링 방식 차이를 설명해주세요.', category: 'framework', difficulty, order: 7 },
       { content: 'JavaScript의 이벤트 루프와 비동기 처리 방식을 설명해주세요.', category: 'language', difficulty, order: 8 },
       { content: '프론트엔드 테스트 전략에 대해 설명해주세요.', category: 'testing', difficulty, order: 9 },
       { content: '대규모 프론트엔드 프로젝트에서 상태 관리 전략을 설명해주세요.', category: 'architecture', difficulty, order: 10 },
     ];
-    return mockPool.slice(0, count);
-  }
 
-  private async callOpenAIGeneration(
-    skills: string[],
-    careers: Record<string, unknown>[],
-    projects: Record<string, unknown>[],
-    difficulty: string,
-    count: number,
-  ): Promise<{ content: string; category: string; difficulty: string; order: number }[]> {
-    const systemPrompt = `You are a senior frontend technical interviewer.
-Your task is to generate interview questions based on the candidate's resume.
-
-Rules:
-- Generate questions that are directly related to the candidate's skills and experience.
-- Each question should test practical understanding, not just theoretical knowledge.
-- Distribute questions across different skill areas from the resume.
-- Assign a category to each question (framework, language, performance, architecture, css, testing, etc.).
-- Adjust question depth based on the specified difficulty level.
-- Questions should be in Korean.
-- Return the result in the specified JSON format.
-
-Difficulty levels:
-- easy: Basic concept questions, definition-level
-- medium: Application-level questions requiring practical experience
-- hard: Deep dive questions requiring architectural thinking and trade-off analysis`;
-
-    const careersText = careers
-      .map((c) => `- ${c.company} / ${c.position} (${c.startDate}~${c.endDate}): ${c.description}`)
-      .join('\n');
-
-    const projectsText = projects
-      .map((p) => `- ${p.name} / ${p.role} (${p.startDate}~${p.endDate}): ${p.description}`)
-      .join('\n');
-
-    const userPrompt = `다음 이력서 정보를 기반으로 ${difficulty} 난이도의 면접 질문을 ${count}개 생성해주세요.
-
-기술 스택: ${skills.join(', ')}
-
-경력:
-${careersText || '없음'}
-
-프로젝트:
-${projectsText || '없음'}`;
-
-    const response = await this.openai.chat.completions.create({
-      model: this.openaiModel,
-      temperature: this.openaiTemperature,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-      response_format: { type: 'json_object' },
-    });
-
-    const content = response.choices[0]?.message?.content;
-    if (!content) {
-      throw new Error('OpenAI 응답이 비어있습니다.');
+    if (!jobPosting) {
+      return mockPool.slice(0, count);
     }
 
-    const parsed = JSON.parse(content);
-    return parsed.questions || [];
+    return mockPool.slice(0, count).map((question, index) => ({
+      ...question,
+      content:
+        index === 0
+          ? '채용공고의 핵심 요구사항과 본인 이력서 경험을 연결해, 해당 역할에서 바로 기여할 수 있는 부분을 설명해주세요.'
+          : question.content,
+    }));
   }
 }

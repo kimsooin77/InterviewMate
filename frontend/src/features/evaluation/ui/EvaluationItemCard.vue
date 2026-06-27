@@ -15,8 +15,8 @@
       <p>{{ item.answer }}</p>
     </section>
 
-    <section class="eval-item-card__section">
-      <h4>해설</h4>
+    <section class="eval-item-card__section eval-item-card__section--review">
+      <h4>내 답변에 대한 평가</h4>
       <p>{{ item.feedback }}</p>
     </section>
 
@@ -27,6 +27,14 @@
           {{ improvement }}
         </li>
       </ul>
+    </section>
+
+    <section
+      v-if="item.idealAnswer"
+      class="eval-item-card__section eval-item-card__section--ideal"
+    >
+      <h4>정답 방향 · 정석 답변</h4>
+      <p>{{ item.idealAnswer }}</p>
     </section>
   </el-card>
 </template>
@@ -41,6 +49,8 @@ defineProps<{
 
 <style lang="scss" scoped>
 .eval-item-card {
+  height: 100%;
+
   &__header {
     display: flex;
     align-items: center;
@@ -83,10 +93,30 @@ defineProps<{
       }
     }
 
-    &--answer {
+    &--answer,
+    &--review,
+    &--ideal {
       padding: 12px 16px;
       border-radius: 8px;
+    }
+
+    &--answer {
       background: #f5f7fa;
+    }
+
+    &--review {
+      border: 1px solid #fee2e2;
+      background: #fff7f7;
+    }
+
+    &--ideal {
+      border: 1px solid #bfdbfe;
+      border-left: 4px solid #2563eb;
+      background: #eff6ff;
+
+      h4 {
+        color: #1d4ed8;
+      }
     }
   }
 }

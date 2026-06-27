@@ -5,6 +5,7 @@ export class QuestionSetResponseDto {
   resumeId: number;
   difficulty: string;
   questionCount: number;
+  jobPosting: string | null;
   questions: QuestionResponseDto[];
   createdAt: Date;
 }

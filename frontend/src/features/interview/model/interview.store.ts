@@ -3,6 +3,7 @@ import { computed, ref } from 'vue';
 import { interviewApi } from '../api/interview.api';
 import type {
   InterviewSession,
+  InterviewHistoryItem,
   CurrentQuestion,
   Progress,
   AnswerFeedback,
@@ -15,6 +16,8 @@ export const useInterviewStore = defineStore('interview', () => {
   const progress = ref<Progress>({ current: 1, total: 0 });
   const isSubmitting = ref(false);
   const isCompleted = ref(false);
+  const history = ref<InterviewHistoryItem[]>([]);
+  const isLoadingHistory = ref(false);
   const questionHistory = ref<CurrentQuestion[]>([]);
   const answersByQuestionId = ref<Record<number, string>>({});
   const latestFeedback = ref<AnswerFeedback | null>(null);
@@ -67,6 +70,17 @@ export const useInterviewStore = defineStore('interview', () => {
       return result;
     } finally {
       isSubmitting.value = false;
+    }
+  }
+
+  async function fetchHistory(): Promise<InterviewHistoryItem[]> {
+    isLoadingHistory.value = true;
+    try {
+      const response = await interviewApi.getHistory();
+      history.value = response.data;
+      return response.data;
+    } finally {
+      isLoadingHistory.value = false;
     }
   }
 
@@ -146,11 +160,14 @@ export const useInterviewStore = defineStore('interview', () => {
     progress,
     isSubmitting,
     isCompleted,
+    history,
+    isLoadingHistory,
     canGoPrevious,
     currentAnswer,
     latestFeedback,
     startSession,
     submitAnswer,
+    fetchHistory,
     goToPreviousQuestion,
     continueAfterFeedback,
     reset,

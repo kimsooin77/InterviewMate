@@ -1,6 +1,7 @@
 import apiClient from '@/shared/api/client';
 import type {
   InterviewSession,
+  InterviewHistoryItem,
   AnswerResponse,
   CreateSessionRequest,
   SubmitAnswerRequest,
@@ -9,6 +10,10 @@ import type {
 export const interviewApi = {
   createSession(data: CreateSessionRequest) {
     return apiClient.post<InterviewSession>('/interviews', data);
+  },
+
+  getHistory() {
+    return apiClient.get<InterviewHistoryItem[]>('/interviews/history');
   },
 
   submitAnswer(sessionId: number, data: SubmitAnswerRequest) {

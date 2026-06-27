@@ -14,4 +14,5 @@ export class EvaluationItemResponseDto {
   feedback: string;
   strengths: string[];
   improvements: string[];
+  idealAnswer: string;
 }

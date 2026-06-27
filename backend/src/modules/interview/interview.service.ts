@@ -5,27 +5,22 @@ import {
   ConflictException,
   BadRequestException,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import OpenAI from 'openai';
+import { In, Repository } from 'typeorm';
 import { InterviewSession } from './entities/interview-session.entity';
 import { InterviewAnswer } from './entities/interview-answer.entity';
 import { Question } from '../question/entities/question.entity';
+import { Evaluation } from '../evaluation/entities/evaluation.entity';
 import { QuestionService } from '../question/question.service';
 import { CreateSessionDto } from './dto/create-session.dto';
 import { SubmitAnswerDto } from './dto/submit-answer.dto';
 import { SessionResponseDto, CurrentQuestionDto } from './dto/session-response.dto';
 import { AnswerFeedbackDto, AnswerResponseDto } from './dto/answer-response.dto';
-import { getOpenAIConfig } from '../../config/openai.config';
+import { InterviewHistoryItemDto } from './dto/interview-history-response.dto';
+import { OpenAIService } from '../../infrastructure/openai/openai.service';
 
 @Injectable()
 export class InterviewService {
-  private readonly openai: OpenAI;
-  private readonly openaiModel: string;
-  private readonly openaiTemperature: number;
-  private readonly useMockAI: boolean;
-
   constructor(
     @InjectRepository(InterviewSession)
     private readonly sessionRepository: Repository<InterviewSession>,
@@ -33,14 +28,50 @@ export class InterviewService {
     private readonly answerRepository: Repository<InterviewAnswer>,
     @InjectRepository(Question)
     private readonly questionRepository: Repository<Question>,
+    @InjectRepository(Evaluation)
+    private readonly evaluationRepository: Repository<Evaluation>,
     private readonly questionService: QuestionService,
-    private readonly configService: ConfigService,
-  ) {
-    const openaiConfig = getOpenAIConfig(configService);
-    this.openai = new OpenAI({ apiKey: openaiConfig.apiKey });
-    this.openaiModel = openaiConfig.model;
-    this.openaiTemperature = openaiConfig.temperature;
-    this.useMockAI = configService.get<string>('USE_MOCK_AI', 'false') === 'true';
+    private readonly openaiService: OpenAIService,
+  ) {}
+
+  async findHistory(userId: number): Promise<InterviewHistoryItemDto[]> {
+    const sessions = await this.sessionRepository.find({
+      where: { userId },
+      relations: ['resume', 'questionSet', 'answers'],
+      order: { startedAt: 'DESC' },
+      take: 50,
+    });
+
+    if (sessions.length === 0) {
+      return [];
+    }
+
+    const evaluations = await this.evaluationRepository.find({
+      where: { sessionId: In(sessions.map((session) => session.id)) },
+    });
+    const evaluationBySessionId = new Map(
+      evaluations.map((evaluation) => [evaluation.sessionId, evaluation]),
+    );
+
+    return sessions.map((session) => {
+      const evaluation = evaluationBySessionId.get(session.id);
+
+      return {
+        id: session.id,
+        questionSetId: session.questionSetId,
+        resumeId: session.resumeId,
+        resumeTitle: this.decodeOriginalName(session.resume?.title || '이력서'),
+        status: session.status,
+        difficulty: session.difficulty,
+        totalQuestions: session.totalQuestions,
+        answeredCount: session.answers?.length || 0,
+        jobPostingApplied: Boolean(session.questionSet?.jobPosting),
+        hasEvaluation: Boolean(evaluation),
+        overallScore: evaluation?.overallScore ?? null,
+        startedAt: session.startedAt,
+        completedAt: session.completedAt,
+      };
+    });
   }
 
   async createSession(
@@ -123,9 +154,13 @@ export class InterviewService {
     }
 
     const savedAnswer = await this.answerRepository.save(answer);
-    const feedback = this.useMockAI
+    const feedback = this.openaiService.isMockMode()
       ? this.getMockAnswerFeedback(savedAnswer.content)
-      : await this.callOpenAIAnswerFeedback(question.content, savedAnswer.content);
+      : await this.openaiService.withMockFallback(
+          'interview.answerFeedback',
+          () => this.openaiService.generateAnswerFeedback(question.content, savedAnswer.content),
+          () => this.getMockAnswerFeedback(savedAnswer.content),
+        );
 
     const answeredCount = await this.answerRepository.count({
       where: { sessionId },
@@ -187,43 +222,6 @@ export class InterviewService {
     };
   }
 
-  private async callOpenAIAnswerFeedback(
-    question: string,
-    answer: string,
-  ): Promise<AnswerFeedbackDto> {
-    const systemPrompt = `You are a technical interviewer.
-Evaluate the candidate's answer immediately after one interview question.
-Return JSON with:
-- isCorrect: boolean
-- explanation: Korean explanation with the correct concept and what to improve.
-
-Rules:
-- Be concise but useful.
-- If the answer says they do not know, isCorrect must be false.
-- Do not invent candidate experience.`;
-
-    const userPrompt = `질문: ${question}
-
-답변: ${answer}`;
-
-    const response = await this.openai.chat.completions.create({
-      model: this.openaiModel,
-      temperature: this.openaiTemperature,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-      response_format: { type: 'json_object' },
-    });
-
-    const content = response.choices[0]?.message?.content;
-    if (!content) {
-      throw new Error('OpenAI 응답이 비어있습니다.');
-    }
-
-    return JSON.parse(content);
-  }
-
   private toCurrentQuestion(question: Question): CurrentQuestionDto {
     return {
       id: question.id,
@@ -232,5 +230,21 @@ Rules:
       difficulty: question.difficulty,
       order: question.order,
     };
+  }
+
+  private decodeOriginalName(value: string): string {
+    if (!this.looksLikeMojibake(value)) {
+      return value;
+    }
+
+    try {
+      return Buffer.from(value, 'latin1').toString('utf8');
+    } catch {
+      return value;
+    }
+  }
+
+  private looksLikeMojibake(value: string): boolean {
+    return /[ÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ]/.test(value);
   }
 }

@@ -1,4 +1,13 @@
-import { IsInt, IsNotEmpty, IsOptional, IsIn, Min, Max } from 'class-validator';
+import {
+  IsInt,
+  IsNotEmpty,
+  IsOptional,
+  IsIn,
+  IsString,
+  MaxLength,
+  Min,
+  Max,
+} from 'class-validator';
 
 export class GenerateQuestionsDto {
   @IsInt()
@@ -16,4 +25,9 @@ export class GenerateQuestionsDto {
     message: '난이도는 easy, medium, hard 중 하나여야 합니다.',
   })
   difficulty?: string = 'medium';
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(12000)
+  jobPosting?: string;
 }
