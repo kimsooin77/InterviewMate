@@ -35,11 +35,15 @@ function handleLogout() {
   min-height: 100vh;
 
   &__header {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
     display: flex;
     align-items: center;
     justify-content: space-between;
     border-bottom: 1px solid #e4e7ed;
     background: #fff;
+    box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
   }
 
   &__logo {
