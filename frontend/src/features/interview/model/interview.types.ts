@@ -14,8 +14,11 @@ export interface InterviewSession {
   status: string;
   currentOrder: number;
   totalQuestions: number;
-  currentQuestion: CurrentQuestion;
+  currentQuestion: CurrentQuestion | null;
+  answeredCount: number;
+  elapsedSeconds: number;
   startedAt: string;
+  completedAt: string | null;
 }
 
 export interface Progress {

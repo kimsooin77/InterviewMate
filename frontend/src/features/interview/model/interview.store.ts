@@ -20,35 +20,54 @@ export const useInterviewStore = defineStore('interview', () => {
   const isLoadingHistory = ref(false);
   const questionHistory = ref<CurrentQuestion[]>([]);
   const answersByQuestionId = ref<Record<number, string>>({});
+  const draftAnswersByQuestionId = ref<Record<number, string>>({});
   const latestFeedback = ref<AnswerFeedback | null>(null);
   const pendingNextQuestion = ref<CurrentQuestion | null>(null);
   const pendingProgress = ref<Progress | null>(null);
   const pendingCompletion = ref(false);
   const pendingHasFollowUp = ref(false);
 
-  const canGoPrevious = computed(() => progress.value.current > 1);
+  const canGoPrevious = computed(() => {
+    const previousOrder = progress.value.current - 1;
+    return questionHistory.value.some((question) => question.order === previousOrder);
+  });
   const currentAnswer = computed(() => {
     if (!currentQuestion.value) return '';
-    return answersByQuestionId.value[currentQuestion.value.id] || '';
+    return (
+      draftAnswersByQuestionId.value[currentQuestion.value.id] ??
+      answersByQuestionId.value[currentQuestion.value.id] ??
+      ''
+    );
   });
 
   async function startSession(questionSetId: number): Promise<InterviewSession> {
     const response = await interviewApi.createSession({ questionSetId });
-    session.value = response.data;
-    currentQuestion.value = response.data.currentQuestion;
-    questionHistory.value = [response.data.currentQuestion];
+    hydrateSession(response.data);
+    return response.data;
+  }
+
+  async function loadSession(sessionId: number): Promise<InterviewSession> {
+    const response = await interviewApi.getSession(sessionId);
+    hydrateSession(response.data);
+    return response.data;
+  }
+
+  function hydrateSession(data: InterviewSession) {
+    session.value = data;
+    currentQuestion.value = data.currentQuestion;
+    questionHistory.value = data.currentQuestion ? [data.currentQuestion] : [];
     answersByQuestionId.value = {};
+    draftAnswersByQuestionId.value = loadDraftAnswers(data.id);
     latestFeedback.value = null;
     pendingNextQuestion.value = null;
     pendingProgress.value = null;
     pendingCompletion.value = false;
     pendingHasFollowUp.value = false;
     progress.value = {
-      current: response.data.currentOrder,
-      total: response.data.totalQuestions,
+      current: data.currentOrder,
+      total: data.totalQuestions,
     };
-    isCompleted.value = false;
-    return response.data;
+    isCompleted.value = data.status === 'completed' || !data.currentQuestion;
   }
 
   async function submitAnswer(data: SubmitAnswerRequest) {
@@ -63,6 +82,7 @@ export const useInterviewStore = defineStore('interview', () => {
         ...answersByQuestionId.value,
         [data.questionId]: result.content,
       };
+      removeDraftAnswer(data.questionId);
 
       latestFeedback.value = result.feedback;
       pendingNextQuestion.value = result.nextQuestion;
@@ -70,10 +90,40 @@ export const useInterviewStore = defineStore('interview', () => {
       pendingCompletion.value = !result.nextQuestion;
       pendingHasFollowUp.value = Boolean(result.hasFollowUp);
 
+      if (result.sessionStatus && session.value) {
+        session.value = {
+          ...session.value,
+          status: result.sessionStatus,
+          completedAt:
+            result.sessionStatus === 'completed'
+              ? new Date().toISOString()
+              : session.value.completedAt,
+        };
+      }
+
       return result;
     } finally {
       isSubmitting.value = false;
     }
+  }
+
+  function saveDraftAnswer(questionId: number, content: string) {
+    if (!session.value) return;
+
+    draftAnswersByQuestionId.value = {
+      ...draftAnswersByQuestionId.value,
+      [questionId]: content,
+    };
+    persistDraftAnswers(session.value.id);
+  }
+
+  function removeDraftAnswer(questionId: number) {
+    if (!session.value) return;
+
+    const nextDrafts = { ...draftAnswersByQuestionId.value };
+    delete nextDrafts[questionId];
+    draftAnswersByQuestionId.value = nextDrafts;
+    persistDraftAnswers(session.value.id);
   }
 
   async function fetchHistory(): Promise<InterviewHistoryItem[]> {
@@ -141,6 +191,7 @@ export const useInterviewStore = defineStore('interview', () => {
     currentQuestion.value = null;
     questionHistory.value = [];
     answersByQuestionId.value = {};
+    draftAnswersByQuestionId.value = {};
     latestFeedback.value = null;
     pendingNextQuestion.value = null;
     pendingProgress.value = null;
@@ -159,6 +210,68 @@ export const useInterviewStore = defineStore('interview', () => {
     pendingHasFollowUp.value = false;
   }
 
+  function draftStorageKey(sessionId: number) {
+    return `interview:drafts:${sessionId}`;
+  }
+
+  function loadDraftAnswers(sessionId: number): Record<number, string> {
+    const rawDrafts = safeGetLocalStorage(draftStorageKey(sessionId));
+    if (!rawDrafts) return {};
+
+    try {
+      const parsed = JSON.parse(rawDrafts) as Record<string, unknown>;
+
+      return Object.fromEntries(
+        Object.entries(parsed).filter(
+          (entry): entry is [string, string] =>
+            typeof entry[1] === 'string' && entry[1].trim().length > 0,
+        ),
+      );
+    } catch {
+      safeRemoveLocalStorage(draftStorageKey(sessionId));
+      return {};
+    }
+  }
+
+  function persistDraftAnswers(sessionId: number) {
+    const drafts = Object.fromEntries(
+      Object.entries(draftAnswersByQuestionId.value).filter(
+        ([, value]) => typeof value === 'string' && value.trim().length > 0,
+      ),
+    );
+
+    if (Object.keys(drafts).length === 0) {
+      safeRemoveLocalStorage(draftStorageKey(sessionId));
+      return;
+    }
+
+    safeSetLocalStorage(draftStorageKey(sessionId), JSON.stringify(drafts));
+  }
+
+  function safeGetLocalStorage(key: string) {
+    try {
+      return localStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  }
+
+  function safeSetLocalStorage(key: string, value: string) {
+    try {
+      localStorage.setItem(key, value);
+    } catch {
+      // Draft persistence is best-effort and should not block answer submission.
+    }
+  }
+
+  function safeRemoveLocalStorage(key: string) {
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      // Draft persistence is best-effort and should not block answer submission.
+    }
+  }
+
   return {
     session,
     currentQuestion,
@@ -172,7 +285,9 @@ export const useInterviewStore = defineStore('interview', () => {
     latestFeedback,
     pendingHasFollowUp,
     startSession,
+    loadSession,
     submitAnswer,
+    saveDraftAnswer,
     fetchHistory,
     goToPreviousQuestion,
     continueAfterFeedback,

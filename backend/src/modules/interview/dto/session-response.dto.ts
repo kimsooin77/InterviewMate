@@ -14,6 +14,9 @@ export class SessionResponseDto {
   status: string;
   currentOrder: number;
   totalQuestions: number;
-  currentQuestion: CurrentQuestionDto;
+  currentQuestion: CurrentQuestionDto | null;
+  answeredCount: number;
+  elapsedSeconds: number;
   startedAt: Date;
+  completedAt: Date | null;
 }

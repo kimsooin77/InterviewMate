@@ -7,8 +7,10 @@
     <section class="interview-history-page__hero">
       <div>
         <span class="interview-history-page__eyebrow">MY INTERVIEWS</span>
-        <h2>이전에 진행한 면접을 다시 확인하세요</h2>
-        <p>완료된 면접은 평가와 리포트로 이어서 볼 수 있고, 진행 중인 면접도 기록으로 남습니다.</p>
+        <h2>진행했던 면접을 다시 확인하세요</h2>
+        <p>
+          완료된 면접은 평가와 리포트로 돌아볼 수 있고, 진행 중인 면접은 이어서 진행할 수 있습니다.
+        </p>
       </div>
       <el-button type="primary" @click="router.push('/resumes/upload')">
         새 면접 준비
@@ -56,26 +58,29 @@
         </div>
 
         <div class="interview-history-page__actions">
-          <el-button
-            v-if="item.status === 'completed'"
-            type="primary"
-            plain
-            @click="router.push(`/evaluations/${item.id}`)"
-          >
-            평가 보기
-          </el-button>
-          <el-button
-            v-if="item.status === 'completed'"
-            @click="router.push(`/reports/${item.id}`)"
-          >
-            리포트
-          </el-button>
-          <el-button
-            v-else
-            @click="router.push(`/question-sets/${item.questionSetId}`)"
-          >
-            질문 보기
-          </el-button>
+          <template v-if="item.status === 'completed'">
+            <el-button
+              type="primary"
+              plain
+              @click="router.push(`/evaluations/${item.id}`)"
+            >
+              평가 보기
+            </el-button>
+            <el-button @click="router.push(`/reports/${item.id}`)">
+              리포트
+            </el-button>
+          </template>
+          <template v-else>
+            <el-button
+              type="primary"
+              @click="router.push(`/interviews/session/${item.id}`)"
+            >
+              이어하기
+            </el-button>
+            <el-button plain @click="router.push(`/question-sets/${item.questionSetId}`)">
+              질문 보기
+            </el-button>
+          </template>
         </div>
       </article>
     </div>

@@ -80,6 +80,19 @@ export class InterviewService {
   ): Promise<SessionResponseDto> {
     const questionSet = await this.questionService.findById(userId, dto.questionSetId);
 
+    const existingSession = await this.sessionRepository.findOne({
+      where: {
+        userId,
+        questionSetId: dto.questionSetId,
+        status: 'in_progress',
+      },
+      order: { startedAt: 'DESC' },
+    });
+
+    if (existingSession) {
+      return this.toSessionResponse(existingSession);
+    }
+
     const firstQuestion = await this.questionRepository.findOne({
       where: { questionSetId: dto.questionSetId, order: 1 },
     });
@@ -99,15 +112,23 @@ export class InterviewService {
 
     const savedSession = await this.sessionRepository.save(session);
 
-    return {
-      id: savedSession.id,
-      questionSetId: savedSession.questionSetId,
-      status: savedSession.status,
-      currentOrder: 1,
-      totalQuestions: savedSession.totalQuestions,
-      currentQuestion: this.toCurrentQuestion(firstQuestion),
-      startedAt: savedSession.startedAt,
-    };
+    return this.toSessionResponse(savedSession, firstQuestion);
+  }
+
+  async findSession(userId: number, sessionId: number): Promise<SessionResponseDto> {
+    const session = await this.sessionRepository.findOne({
+      where: { id: sessionId },
+    });
+
+    if (!session) {
+      throw new NotFoundException('면접 세션을 찾을 수 없습니다.');
+    }
+
+    if (session.userId !== userId) {
+      throw new ForbiddenException('본인의 면접 세션만 접근할 수 있습니다.');
+    }
+
+    return this.toSessionResponse(session);
   }
 
   async submitAnswer(
@@ -331,6 +352,65 @@ export class InterviewService {
       isFollowUp: question.questionType === 'follow_up',
       parentQuestionId: question.parentQuestionId,
     };
+  }
+
+  private async toSessionResponse(
+    session: InterviewSession,
+    knownCurrentQuestion?: Question | null,
+  ): Promise<SessionResponseDto> {
+    const answers = await this.answerRepository.find({
+      where: { sessionId: session.id },
+    });
+    const answeredQuestionIds = new Set(answers.map((answer) => answer.questionId));
+
+    const currentQuestion =
+      knownCurrentQuestion && !answeredQuestionIds.has(knownCurrentQuestion.id)
+        ? knownCurrentQuestion
+        : await this.findCurrentQuestion(session.questionSetId, answeredQuestionIds);
+
+    if (!currentQuestion && session.status !== 'completed') {
+      session.status = 'completed';
+      session.completedAt = session.completedAt || new Date();
+      await this.sessionRepository.save(session);
+    }
+
+    const totalQuestions = Math.max(session.totalQuestions, answers.length);
+    const currentOrder = currentQuestion
+      ? currentQuestion.order
+      : Math.min(answers.length, totalQuestions || session.totalQuestions);
+
+    return {
+      id: session.id,
+      questionSetId: session.questionSetId,
+      status: session.status,
+      currentOrder,
+      totalQuestions,
+      currentQuestion: currentQuestion ? this.toCurrentQuestion(currentQuestion) : null,
+      answeredCount: answers.length,
+      elapsedSeconds: this.getElapsedSeconds(session),
+      startedAt: session.startedAt,
+      completedAt: session.completedAt,
+    };
+  }
+
+  private async findCurrentQuestion(
+    questionSetId: number,
+    answeredQuestionIds: Set<number>,
+  ): Promise<Question | null> {
+    const questions = await this.questionRepository.find({
+      where: { questionSetId },
+      order: { order: 'ASC' },
+    });
+
+    return questions.find((question) => !answeredQuestionIds.has(question.id)) || null;
+  }
+
+  private getElapsedSeconds(session: InterviewSession): number {
+    const endAt = session.completedAt || new Date();
+    return Math.max(
+      0,
+      Math.floor((endAt.getTime() - session.startedAt.getTime()) / 1000),
+    );
   }
 
   private decodeOriginalName(value: string): string {

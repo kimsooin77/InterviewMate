@@ -42,6 +42,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   submit: [data: { questionId: number; content: string }];
+  update: [data: { questionId: number; content: string }];
 }>();
 
 const answer = ref(props.initialContent || '');
@@ -52,6 +53,13 @@ watch(
     answer.value = props.initialContent || '';
   },
 );
+
+watch(answer, (content) => {
+  emit('update', {
+    questionId: props.questionId,
+    content,
+  });
+});
 
 function handleSubmit() {
   if (!answer.value.trim()) return;

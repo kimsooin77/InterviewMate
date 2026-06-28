@@ -24,6 +24,14 @@ export class InterviewController {
     return this.interviewService.findHistory(user.id);
   }
 
+  @Get(':id')
+  async findSession(
+    @CurrentUser() user: CurrentUserData,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.interviewService.findSession(user.id, id);
+  }
+
   @Post()
   async createSession(
     @CurrentUser() user: CurrentUserData,
