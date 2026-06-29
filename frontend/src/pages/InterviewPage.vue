@@ -54,7 +54,7 @@
       :elapsed-seconds="interviewStore.session?.elapsedSeconds"
       class="interview-page__session"
       @submit="handleSubmit"
-      @draft="interviewStore.saveDraftAnswer"
+      @draft="handleDraft"
       @continue="interviewStore.continueAfterFeedback"
     />
 
@@ -101,6 +101,10 @@ async function handleSubmit(data: { questionId: number; content: string }) {
     const err = error as { response?: { data?: { message?: string } } };
     ElMessage.error(err.response?.data?.message || '답변 제출에 실패했습니다.');
   }
+}
+
+function handleDraft(data: { questionId: number; content: string }) {
+  interviewStore.saveDraftAnswer(data.questionId, data.content);
 }
 
 async function handleBack() {
