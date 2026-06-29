@@ -1,4 +1,9 @@
-import { REFRESH_TOKEN_KEY, TOKEN_KEY, USER_KEY } from '@/shared/constants';
+import {
+  REFRESH_TOKEN_KEY,
+  SESSION_EXPIRED_KEY,
+  TOKEN_KEY,
+  USER_KEY,
+} from '@/shared/constants';
 
 type JwtPayload = {
   exp?: number;
@@ -12,6 +17,16 @@ export function clearStoredAuth() {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(REFRESH_TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
+}
+
+export function markSessionExpired() {
+  sessionStorage.setItem(SESSION_EXPIRED_KEY, 'true');
+}
+
+export function consumeSessionExpired() {
+  const isExpired = sessionStorage.getItem(SESSION_EXPIRED_KEY) === 'true';
+  sessionStorage.removeItem(SESSION_EXPIRED_KEY);
+  return isExpired;
 }
 
 export function isAccessTokenExpired(token: string | null): boolean {
@@ -31,6 +46,7 @@ export function hasValidStoredAccessToken(): boolean {
   if (!isAccessTokenExpired(token)) return true;
 
   clearStoredAuth();
+  markSessionExpired();
   return false;
 }
 

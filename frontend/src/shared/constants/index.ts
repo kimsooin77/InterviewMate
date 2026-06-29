@@ -9,3 +9,4 @@ export const DEFAULT_PAGE_SIZE = 10;
 export const TOKEN_KEY = 'access_token';
 export const REFRESH_TOKEN_KEY = 'refresh_token';
 export const USER_KEY = 'auth_user';
+export const SESSION_EXPIRED_KEY = 'session_expired';

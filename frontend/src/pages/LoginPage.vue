@@ -17,16 +17,23 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import LoginForm from '@/features/auth/ui/LoginForm.vue';
 import { useAuthStore } from '@/features/auth';
+import { consumeSessionExpired } from '@/shared/utils/auth-token';
 import type { LoginRequest } from '@/features/auth';
 
 const authStore = useAuthStore();
 const router = useRouter();
 const loading = ref(false);
+
+onMounted(() => {
+  if (consumeSessionExpired()) {
+    ElMessage.warning('세션이 만료되었습니다. 다시 로그인해 주세요.');
+  }
+});
 
 async function handleLogin(data: LoginRequest) {
   loading.value = true;
