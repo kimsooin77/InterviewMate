@@ -10,12 +10,13 @@ import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { join } from 'path';
-import { mkdirSync, writeFileSync, readFileSync } from 'fs';
+import { existsSync, mkdirSync, unlinkSync, writeFileSync, readFileSync } from 'fs';
 import pdfParse from 'pdf-parse';
 import { Resume } from './entities/resume.entity';
 import { UploadResumeDto } from './dto/upload-resume.dto';
 import {
   ResumeResponseDto,
+  ResumeSummaryResponseDto,
   UploadResponseDto,
   AnalyzeResponseDto,
 } from './dto/resume-response.dto';
@@ -145,6 +146,26 @@ export class ResumeService {
     }
   }
 
+  async findAll(userId: number): Promise<ResumeSummaryResponseDto[]> {
+    const resumes = await this.resumeRepository.find({
+      where: { userId },
+      order: { createdAt: 'DESC' },
+    });
+
+    return resumes.map((resume) => ({
+      id: resume.id,
+      title: this.decodeOriginalName(resume.title),
+      fileName: this.decodeOriginalName(resume.fileName),
+      fileSize: resume.fileSize,
+      status: resume.analysisStatus,
+      skillCount: resume.skills?.length ?? 0,
+      projectCount: resume.projects?.length ?? 0,
+      analyzedAt: resume.analysisCompletedAt,
+      createdAt: resume.createdAt,
+      updatedAt: resume.updatedAt,
+    }));
+  }
+
   async findById(userId: number, resumeId: number): Promise<ResumeResponseDto> {
     const resume = await this.findOneOrFail(resumeId, userId);
     const normalizedAnalysis = this.normalizeAnalysisResult({
@@ -166,6 +187,23 @@ export class ResumeService {
       createdAt: resume.createdAt,
       updatedAt: resume.updatedAt,
     };
+  }
+
+  async remove(userId: number, resumeId: number): Promise<void> {
+    const resume = await this.findOneOrFail(resumeId, userId);
+    const filePath = resume.filePath;
+
+    await this.resumeRepository.remove(resume);
+
+    if (filePath && existsSync(filePath)) {
+      try {
+        unlinkSync(filePath);
+      } catch (error) {
+        this.logger.warn(
+          `Failed to delete resume file: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    }
   }
 
   private async findOneOrFail(resumeId: number, userId: number): Promise<Resume> {

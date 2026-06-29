@@ -38,7 +38,7 @@
       style="width: 100%; margin-top: 12px"
       @click="handleUpload"
     >
-      업로드
+      {{ submitLabel }}
     </el-button>
   </div>
 </template>
@@ -55,9 +55,12 @@ const emit = defineEmits<{
   upload: [file: File, title?: string];
 }>();
 
-defineProps<{
+withDefaults(defineProps<{
   loading?: boolean;
-}>();
+  submitLabel?: string;
+}>(), {
+  submitLabel: '업로드',
+});
 
 const uploadRef = ref<UploadInstance>();
 const selectedFile = ref<File | null>(null);

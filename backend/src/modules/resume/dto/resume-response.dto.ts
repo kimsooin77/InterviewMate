@@ -12,6 +12,19 @@ export class ResumeResponseDto {
   updatedAt: Date;
 }
 
+export class ResumeSummaryResponseDto {
+  id: number;
+  title: string;
+  fileName: string;
+  fileSize: number;
+  status: string;
+  skillCount: number;
+  projectCount: number;
+  analyzedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export class UploadResponseDto {
   id: number;
   title: string;

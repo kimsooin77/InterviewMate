@@ -27,6 +27,11 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/pages/DashboardPage.vue'),
       },
       {
+        path: 'resumes',
+        name: 'ResumeManage',
+        component: () => import('@/pages/ResumeManagePage.vue'),
+      },
+      {
         path: 'resumes/upload',
         name: 'ResumeUpload',
         component: () => import('@/pages/ResumeUploadPage.vue'),

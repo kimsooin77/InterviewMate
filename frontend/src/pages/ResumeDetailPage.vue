@@ -45,7 +45,7 @@ onMounted(async () => {
     await resumeStore.fetchResume(id);
   } catch {
     ElMessage.error('이력서를 불러올 수 없습니다.');
-    router.push('/resumes/upload');
+    router.push('/resumes');
   }
 });
 

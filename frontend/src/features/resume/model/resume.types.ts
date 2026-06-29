@@ -33,6 +33,19 @@ export interface Resume {
   updatedAt: string;
 }
 
+export interface ResumeSummary {
+  id: number;
+  title: string;
+  fileName: string;
+  fileSize: number;
+  status: string;
+  skillCount: number;
+  projectCount: number;
+  analyzedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface UploadResponse {
   id: number;
   title: string;

@@ -7,12 +7,9 @@
 
       <div v-if="authStore.isAuthenticated" class="app-layout__nav">
         <el-button text @click="navigateTo('/')">대시보드</el-button>
-        <el-button text @click="navigateTo('/resumes/upload')">이력서</el-button>
+        <el-button text @click="navigateTo('/resumes')">이력서</el-button>
         <el-button text @click="navigateTo('/interviews/history')">면접 기록</el-button>
         <el-button text @click="navigateTo('/saved-questions')">질문 보관함</el-button>
-        <span v-if="authStore.user?.name" class="app-layout__user">
-          {{ authStore.user.name }}
-        </span>
         <el-button text @click="handleLogout">로그아웃</el-button>
       </div>
 
@@ -56,7 +53,7 @@
               <span>대시보드</span>
             </span>
           </button>
-          <button type="button" @click="navigateTo('/resumes/upload')">
+          <button type="button" @click="navigateTo('/resumes')">
             <span class="mobile-menu-list__content">
               <span class="mobile-menu-list__icon"><el-icon><Document /></el-icon></span>
               <span>이력서</span>
@@ -191,15 +188,6 @@ function handleLogout() {
       background: #ecf5ff;
       outline: none;
     }
-  }
-
-  &__user {
-    max-width: 140px;
-    overflow: hidden;
-    color: #606266;
-    font-size: 14px;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
 
   &__main {

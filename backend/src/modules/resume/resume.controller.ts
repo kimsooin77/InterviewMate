@@ -2,6 +2,7 @@ import {
   Controller,
   Post,
   Get,
+  Delete,
   Param,
   Body,
   UseGuards,
@@ -40,11 +41,25 @@ export class ResumeController {
     return this.resumeService.analyze(user.id, id);
   }
 
+  @Get()
+  async findAll(@CurrentUser() user: CurrentUserData) {
+    return this.resumeService.findAll(user.id);
+  }
+
   @Get(':id')
   async findById(
     @CurrentUser() user: CurrentUserData,
     @Param('id', ParseIntPipe) id: number,
   ) {
     return this.resumeService.findById(user.id, id);
+  }
+
+  @Delete(':id')
+  async remove(
+    @CurrentUser() user: CurrentUserData,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    await this.resumeService.remove(user.id, id);
+    return { success: true };
   }
 }

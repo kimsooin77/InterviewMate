@@ -7,7 +7,7 @@
         <p>이력서를 업로드하고 질문을 생성한 뒤, 진행 중인 면접과 최근 결과를 한 곳에서 확인하세요.</p>
       </div>
       <div class="dashboard-page__hero-actions">
-        <el-button type="primary" size="large" @click="router.push('/resumes/upload')">
+        <el-button type="primary" size="large" @click="router.push('/resumes')">
           이력서 업로드
         </el-button>
         <el-button size="large" @click="router.push('/interviews/history')">

@@ -1,11 +1,18 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import { resumeApi } from '../api/resume.api';
-import type { Resume, UploadResponse, AnalyzeResponse } from './resume.types';
+import type {
+  Resume,
+  ResumeSummary,
+  UploadResponse,
+  AnalyzeResponse,
+} from './resume.types';
 
 export const useResumeStore = defineStore('resume', () => {
+  const resumes = ref<ResumeSummary[]>([]);
   const currentResume = ref<Resume | null>(null);
   const uploadResult = ref<UploadResponse | null>(null);
+  const isLoadingResumes = ref(false);
   const isUploading = ref(false);
   const isAnalyzing = ref(false);
 
@@ -30,10 +37,40 @@ export const useResumeStore = defineStore('resume', () => {
     }
   }
 
+  async function fetchResumes(): Promise<ResumeSummary[]> {
+    isLoadingResumes.value = true;
+    try {
+      const response = await resumeApi.getAll();
+      resumes.value = response.data;
+      return response.data;
+    } finally {
+      isLoadingResumes.value = false;
+    }
+  }
+
   async function fetchResume(resumeId: number): Promise<Resume> {
     const response = await resumeApi.getById(resumeId);
     currentResume.value = response.data;
     return response.data;
+  }
+
+  async function remove(resumeId: number): Promise<void> {
+    await resumeApi.remove(resumeId);
+    resumes.value = resumes.value.filter((resume) => resume.id !== resumeId);
+
+    if (currentResume.value?.id === resumeId) {
+      currentResume.value = null;
+    }
+  }
+
+  async function removeMany(resumeIds: number[]): Promise<void> {
+    await Promise.all(resumeIds.map((resumeId) => resumeApi.remove(resumeId)));
+    const resumeIdSet = new Set(resumeIds);
+    resumes.value = resumes.value.filter((resume) => !resumeIdSet.has(resume.id));
+
+    if (currentResume.value && resumeIdSet.has(currentResume.value.id)) {
+      currentResume.value = null;
+    }
   }
 
   function reset() {
@@ -42,13 +79,18 @@ export const useResumeStore = defineStore('resume', () => {
   }
 
   return {
+    resumes,
     currentResume,
     uploadResult,
+    isLoadingResumes,
     isUploading,
     isAnalyzing,
     upload,
     analyze,
+    fetchResumes,
     fetchResume,
+    remove,
+    removeMany,
     reset,
   };
 });

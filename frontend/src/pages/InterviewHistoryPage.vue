@@ -12,7 +12,7 @@
           완료된 면접은 평가와 리포트로 돌아볼 수 있고, 진행 중인 면접은 이어서 진행할 수 있습니다.
         </p>
       </div>
-      <el-button type="primary" @click="router.push('/resumes/upload')">
+      <el-button type="primary" @click="router.push('/resumes')">
         새 면접 준비
       </el-button>
     </section>
