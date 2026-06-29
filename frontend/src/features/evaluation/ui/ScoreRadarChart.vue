@@ -51,7 +51,9 @@ function getColor(value: number): string {
 
   &__header {
     display: flex;
+    align-items: flex-start;
     justify-content: space-between;
+    gap: 8px;
     font-size: 13px;
   }
 
@@ -62,6 +64,12 @@ function getColor(value: number): string {
   &__value {
     font-weight: 600;
     color: #303133;
+  }
+}
+
+@media (max-width: 640px) {
+  .score-radar__header {
+    flex-direction: column;
   }
 }
 </style>

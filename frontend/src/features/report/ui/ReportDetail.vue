@@ -3,7 +3,7 @@
     <div class="report-detail__header">
       <GradeBadge :grade="report.grade" :score="report.overallScore" />
       <div class="report-detail__meta">
-        <el-descriptions :column="2" border size="small">
+        <el-descriptions :column="descriptionColumns" border size="small">
           <el-descriptions-item label="난이도">{{ difficultyLabel }}</el-descriptions-item>
           <el-descriptions-item label="질문 수">{{ report.metadata.totalQuestions }}개</el-descriptions-item>
           <el-descriptions-item label="소요 시간">{{ formattedDuration }}</el-descriptions-item>
@@ -31,7 +31,7 @@
 
     <el-card style="margin-top: 16px">
       <template #header><span style="font-weight: 600">질문별 결과</span></template>
-      <el-table :data="report.questionResults" stripe>
+      <el-table :data="report.questionResults" stripe class="report-detail__table">
         <el-table-column prop="content" label="질문" min-width="300" show-overflow-tooltip />
         <el-table-column prop="category" label="카테고리" width="120" align="center" />
         <el-table-column prop="score" label="점수" width="80" align="center" />
@@ -46,7 +46,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import GradeBadge from './GradeBadge.vue';
 import CategoryScoreChart from './CategoryScoreChart.vue';
 import StrengthWeakness from './StrengthWeakness.vue';
@@ -56,6 +56,9 @@ import type { Report } from '../model/report.types';
 const props = defineProps<{
   report: Report;
 }>();
+
+const viewportWidth = ref(typeof window === 'undefined' ? 1024 : window.innerWidth);
+const descriptionColumns = computed(() => (viewportWidth.value <= 640 ? 1 : 2));
 
 const difficultyLabel = computed(() => {
   const map: Record<string, string> = {
@@ -79,6 +82,18 @@ function gradeTagType(grade: string): '' | 'success' | 'warning' | 'danger' | 'i
   if (grade === 'C+' || grade === 'C') return 'warning';
   return 'danger';
 }
+
+function handleResize() {
+  viewportWidth.value = window.innerWidth;
+}
+
+onMounted(() => {
+  window.addEventListener('resize', handleResize);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize);
+});
 </script>
 
 <style lang="scss" scoped>
@@ -98,6 +113,32 @@ function gradeTagType(grade: string): '' | 'success' | 'warning' | 'danger' | 'i
     font-size: 15px;
     line-height: 1.8;
     color: #606266;
+  }
+
+  &__table {
+    width: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  .report-detail {
+    &__header {
+      align-items: stretch;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    &__meta {
+      min-width: 0;
+    }
+
+    :deep(.el-card__body) {
+      padding: 14px;
+    }
+
+    :deep(.el-table__inner-wrapper) {
+      overflow-x: auto;
+    }
   }
 }
 </style>

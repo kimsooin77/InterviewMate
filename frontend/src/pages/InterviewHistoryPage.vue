@@ -250,6 +250,11 @@ function difficultyLabel(difficulty: string) {
 
     &__actions {
       flex-wrap: wrap;
+
+      .el-button {
+        flex: 1 1 120px;
+        margin-left: 0;
+      }
     }
   }
 }

@@ -123,4 +123,29 @@ const difficultyLabel = computed(() => {
     text-align: center;
   }
 }
+
+@media (max-width: 640px) {
+  .question-set-preview {
+    &__summary {
+      padding: 12px;
+    }
+
+    &__job-posting {
+      padding: 16px;
+
+      &-header {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 8px;
+      }
+    }
+
+    &__actions {
+      :deep(.el-button) {
+        width: 100%;
+        margin-left: 0;
+      }
+    }
+  }
+}
 </style>

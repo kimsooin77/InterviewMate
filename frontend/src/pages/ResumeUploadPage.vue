@@ -37,4 +37,10 @@ async function handleUpload(file: File, title?: string) {
   margin: 0 auto;
   padding: 20px;
 }
+
+@media (max-width: 640px) {
+  .resume-upload-page {
+    padding: 12px 0;
+  }
+}
 </style>

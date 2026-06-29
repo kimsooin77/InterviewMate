@@ -49,15 +49,21 @@
         <div class="evaluation-page__carousel-header">
           <strong>보완 카드 {{ activeCardIndex + 1 }} / {{ weakEvaluations.length }}</strong>
           <div class="evaluation-page__carousel-actions">
-            <el-button circle :disabled="activeCardIndex === 0" @click="scrollEvaluation(-1)">
-              ‹
+            <el-button
+              circle
+              aria-label="이전 보완 카드"
+              :disabled="activeCardIndex === 0"
+              @click="scrollEvaluation(-1)"
+            >
+              <el-icon><ArrowLeft /></el-icon>
             </el-button>
             <el-button
               circle
+              aria-label="다음 보완 카드"
               :disabled="activeCardIndex >= weakEvaluations.length - 1"
               @click="scrollEvaluation(1)"
             >
-              ›
+              <el-icon><ArrowRight /></el-icon>
             </el-button>
           </div>
         </div>
@@ -86,7 +92,6 @@
           />
         </div>
       </div>
-
     </div>
 
     <el-skeleton v-else :rows="10" animated class="evaluation-page__content" />
@@ -97,7 +102,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage, ElIcon } from 'element-plus';
-import { Loading } from '@element-plus/icons-vue';
+import { ArrowLeft, ArrowRight, Loading } from '@element-plus/icons-vue';
 import EvaluationSummary from '@/features/evaluation/ui/EvaluationSummary.vue';
 import EvaluationItemCard from '@/features/evaluation/ui/EvaluationItemCard.vue';
 import { useEvaluationStore } from '@/features/evaluation';
@@ -207,6 +212,17 @@ function handleEvaluationScroll() {
   &__carousel-actions {
     display: flex;
     gap: 8px;
+
+    :deep(.el-button) {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    :deep(.el-icon) {
+      margin: 0;
+      line-height: 1;
+    }
   }
 
   &__track {
@@ -248,6 +264,21 @@ function handleEvaluationScroll() {
       }
     }
   }
+}
 
+@media (max-width: 640px) {
+  .evaluation-page {
+    padding: 12px 0;
+
+    &__carousel-header {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+
+    &__carousel-actions {
+      width: 100%;
+      justify-content: flex-end;
+    }
+  }
 }
 </style>

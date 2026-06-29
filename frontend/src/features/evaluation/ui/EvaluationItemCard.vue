@@ -255,12 +255,21 @@ defineProps<{
 @media (max-width: 720px) {
   .eval-item-card {
     :deep(.el-card__body) {
-      max-height: min(620px, calc(100vh - 220px));
+      max-height: none;
+      min-height: 0;
+      padding: 14px;
     }
 
     &__content-grid {
       display: flex;
       flex-direction: column;
+      overflow: visible;
+      padding-right: 0;
+    }
+
+    &__left-column,
+    &__section--ideal {
+      overflow: visible;
     }
   }
 }

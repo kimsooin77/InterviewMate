@@ -24,5 +24,15 @@ export function authGuard(
     return;
   }
 
+  if (hasValidToken && !authStore.user) {
+    authStore.ensureUser()
+      .then(() => next())
+      .catch(() => {
+        authStore.logout();
+        next({ path: '/login', query: { redirect: to.fullPath } });
+      });
+    return;
+  }
+
   next();
 }

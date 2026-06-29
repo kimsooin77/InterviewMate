@@ -44,6 +44,7 @@ const difficultyLabel = computed(() => {
   &__header {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: 8px;
     margin-bottom: 12px;
   }
@@ -59,6 +60,12 @@ const difficultyLabel = computed(() => {
     margin: 0;
     font-size: 15px;
     line-height: 1.6;
+  }
+}
+
+@media (max-width: 640px) {
+  .question-card__order {
+    margin-left: 0;
   }
 }
 </style>

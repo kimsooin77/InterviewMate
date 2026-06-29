@@ -49,7 +49,9 @@ function getColor(value: number): string {
 
   &__header {
     display: flex;
+    align-items: flex-start;
     justify-content: space-between;
+    gap: 8px;
     font-size: 14px;
   }
 
@@ -59,7 +61,14 @@ function getColor(value: number): string {
   }
 
   &__meta {
+    flex: 0 0 auto;
     color: #909399;
+  }
+}
+
+@media (max-width: 640px) {
+  .category-scores__header {
+    flex-direction: column;
   }
 }
 </style>

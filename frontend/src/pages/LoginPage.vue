@@ -49,10 +49,11 @@ async function handleLogin(data: LoginRequest) {
   align-items: center;
   justify-content: center;
   min-height: 100vh;
+  padding: 20px;
   background: #f5f7fa;
 
   &__card {
-    width: 420px;
+    width: min(420px, 100%);
   }
 
   &__title {

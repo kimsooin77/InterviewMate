@@ -4,6 +4,7 @@ import type {
   LoginResponse,
   SignupRequest,
   SignupResponse,
+  User,
 } from '../model/auth.types';
 
 export const authApi = {
@@ -13,5 +14,9 @@ export const authApi = {
 
   login(data: LoginRequest) {
     return apiClient.post<LoginResponse>('/auth/login', data);
+  },
+
+  me() {
+    return apiClient.get<User>('/auth/me');
   },
 };

@@ -12,7 +12,7 @@ import { User } from './entities/user.entity';
 import { RefreshToken } from './entities/refresh-token.entity';
 import { SignupDto } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
-import { LoginResponseDto, SignupResponseDto } from './dto/auth-response.dto';
+import { LoginResponseDto, SignupResponseDto, UserResponseDto } from './dto/auth-response.dto';
 import { JwtPayload } from '../../common/types/common.types';
 
 @Injectable()
@@ -81,6 +81,23 @@ export class AuthService {
         name: user.name,
         createdAt: user.createdAt,
       },
+    };
+  }
+
+  async findMe(userId: number): Promise<UserResponseDto> {
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('유효하지 않은 토큰입니다.');
+    }
+
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      createdAt: user.createdAt,
     };
   }
 

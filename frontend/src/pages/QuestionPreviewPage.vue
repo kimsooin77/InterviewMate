@@ -50,4 +50,10 @@ onMounted(async () => {
   margin: 0 auto;
   padding: 20px;
 }
+
+@media (max-width: 640px) {
+  .question-preview-page {
+    padding: 12px 0;
+  }
+}
 </style>

@@ -122,15 +122,41 @@ function handleUpload() {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 8px;
     padding: 8px 12px;
     background: #f5f7fa;
     border-radius: 4px;
     font-size: 14px;
+
+    span:first-child {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
   }
 
   &__file-size {
+    flex: 0 0 auto;
     color: #909399;
     font-size: 12px;
+  }
+}
+
+@media (max-width: 640px) {
+  .resume-uploader {
+    &__content {
+      padding: 12px 8px;
+    }
+
+    &__file-info {
+      align-items: flex-start;
+      flex-direction: column;
+
+      span:first-child {
+        width: 100%;
+      }
+    }
   }
 }
 </style>

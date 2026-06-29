@@ -1,4 +1,4 @@
-import { REFRESH_TOKEN_KEY, TOKEN_KEY } from '@/shared/constants';
+import { REFRESH_TOKEN_KEY, TOKEN_KEY, USER_KEY } from '@/shared/constants';
 
 type JwtPayload = {
   exp?: number;
@@ -11,6 +11,7 @@ export function getStoredAccessToken(): string | null {
 export function clearStoredAuth() {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(REFRESH_TOKEN_KEY);
+  localStorage.removeItem(USER_KEY);
 }
 
 export function isAccessTokenExpired(token: string | null): boolean {

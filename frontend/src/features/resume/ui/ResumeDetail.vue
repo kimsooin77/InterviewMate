@@ -45,9 +45,19 @@ defineEmits<{
 
   &__meta {
     display: flex;
+    flex-wrap: wrap;
     gap: 16px;
     font-size: 13px;
     color: #909399;
+  }
+}
+
+@media (max-width: 640px) {
+  .resume-detail {
+    &__meta {
+      flex-direction: column;
+      gap: 4px;
+    }
   }
 }
 </style>

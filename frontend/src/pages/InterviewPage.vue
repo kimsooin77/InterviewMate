@@ -149,4 +149,10 @@ async function handleExit() {
     margin-top: 40px;
   }
 }
+
+@media (max-width: 640px) {
+  .interview-page {
+    padding: 12px 0;
+  }
+}
 </style>

@@ -46,4 +46,10 @@ async function handleGenerate(data: GenerateQuestionsRequest) {
   margin: 0 auto;
   padding: 20px;
 }
+
+@media (max-width: 640px) {
+  .question-setup-page {
+    padding: 12px 0;
+  }
+}
 </style>

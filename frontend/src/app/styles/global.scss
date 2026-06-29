@@ -1,0 +1,47 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  min-width: 0;
+  margin: 0;
+}
+
+body {
+  overflow-x: hidden;
+}
+
+img,
+svg,
+canvas,
+video {
+  max-width: 100%;
+}
+
+.el-page-header {
+  gap: 12px;
+}
+
+.el-page-header__header {
+  flex-wrap: wrap;
+}
+
+.el-page-header__left,
+.el-page-header__content,
+.el-page-header__extra {
+  min-width: 0;
+}
+
+.el-page-header__extra {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.el-table {
+  max-width: 100%;
+}

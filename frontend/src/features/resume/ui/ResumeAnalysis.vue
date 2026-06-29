@@ -162,4 +162,22 @@ function getProjectSkills(project: Project): string[] {
     line-height: 1.6;
   }
 }
+
+@media (max-width: 640px) {
+  .resume-analysis {
+    &__status {
+      align-items: stretch;
+      flex-direction: column;
+
+      .el-button {
+        width: 100%;
+        margin-left: 0;
+      }
+    }
+
+    :deep(.el-timeline) {
+      padding-left: 0;
+    }
+  }
+}
 </style>
