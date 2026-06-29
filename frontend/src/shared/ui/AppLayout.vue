@@ -6,6 +6,7 @@
       </button>
 
       <div v-if="authStore.isAuthenticated" class="app-layout__nav">
+        <el-button text @click="navigateTo('/')">대시보드</el-button>
         <el-button text @click="navigateTo('/resumes/upload')">이력서</el-button>
         <el-button text @click="navigateTo('/interviews/history')">면접 기록</el-button>
         <span v-if="authStore.user?.name" class="app-layout__user">
@@ -48,6 +49,14 @@
         </div>
 
         <nav class="mobile-menu-list">
+          <button type="button" @click="navigateTo('/')">
+            <span class="mobile-menu-list__content">
+              <span class="mobile-menu-list__icon">
+                <el-icon><House /></el-icon>
+              </span>
+              <span>대시보드</span>
+            </span>
+          </button>
           <button type="button" @click="navigateTo('/resumes/upload')">
             <span class="mobile-menu-list__content">
               <span class="mobile-menu-list__icon">
@@ -91,6 +100,7 @@ import { useRouter } from 'vue-router';
 import {
   ChatLineRound,
   Document,
+  House,
   Menu,
   SwitchButton,
   UserFilled,
@@ -249,7 +259,14 @@ function handleLogout() {
 }
 
 .mobile-menu-user-wrap {
-  padding: 18px;
+  padding: 18px 18px 18px 10px;
+}
+
+.mobile-menu-user {
+  border: 1px solid #d9ecff;
+  border-radius: 10px;
+  background: #ecf5ff;
+  padding: 15px;
 }
 
 .mobile-menu-user__inner {
@@ -266,12 +283,8 @@ function handleLogout() {
   width: 44px;
   height: 44px;
   border-radius: 12px;
-  color: #fff;
+  color: #409eff;
   font-size: 22px;
-
-  .el-icon {
-	--color: #409eff
-  }
 }
 
 .mobile-menu-user__text {
@@ -316,7 +329,7 @@ function handleLogout() {
   align-items: center;
   width: 100%;
   gap: 12px;
-  padding: 17px 18px;
+  padding: 17px 18px 17px 10px;
 }
 
 .mobile-menu-list button:hover,
@@ -340,7 +353,7 @@ function handleLogout() {
 
 .mobile-menu-logout-wrap {
   margin-top: auto;
-  padding: 18px;
+  padding: 18px 18px 18px 10px;
 }
 
 .mobile-menu-logout {
@@ -350,7 +363,7 @@ function handleLogout() {
   color: #f56c6c;
 
   .mobile-menu-logout__content {
-    padding: 15px 14px;
+    padding: 15px 14px 15px 10px;
   }
 }
 

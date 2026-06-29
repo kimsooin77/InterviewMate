@@ -23,7 +23,8 @@ const routes: RouteRecordRaw[] = [
     children: [
       {
         path: '',
-        redirect: '/resumes/upload',
+        name: 'Dashboard',
+        component: () => import('@/pages/DashboardPage.vue'),
       },
       {
         path: 'resumes/upload',
