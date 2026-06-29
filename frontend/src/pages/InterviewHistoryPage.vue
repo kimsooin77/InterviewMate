@@ -237,6 +237,8 @@ function difficultyLabel(difficulty: string) {
 
 @media (max-width: 760px) {
   .interview-history-page {
+    padding: 12px 0;
+
     &__hero,
     &__card {
       display: flex;
@@ -244,8 +246,38 @@ function difficultyLabel(difficulty: string) {
       align-items: stretch;
     }
 
+    &__hero {
+      margin-top: 14px;
+      padding: 18px;
+      border-radius: 8px;
+
+      h2 {
+        font-size: 20px;
+      }
+
+      p {
+        font-size: 13px;
+        line-height: 1.5;
+      }
+    }
+
+    &__list {
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    &__card {
+      gap: 12px;
+      padding: 16px;
+      border-radius: 8px;
+    }
+
     &__score {
       text-align: left;
+
+      strong {
+        font-size: 24px;
+      }
     }
 
     &__actions {

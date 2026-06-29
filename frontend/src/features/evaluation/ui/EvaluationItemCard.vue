@@ -8,6 +8,9 @@
     <section class="eval-item-card__section eval-item-card__section--question">
       <h4>질문</h4>
       <p>{{ item.question }}</p>
+      <div class="eval-item-card__save">
+        <el-button size="small" plain @click="saveQuestion">보관함 저장</el-button>
+      </div>
     </section>
 
     <el-collapse class="eval-item-card__answer-collapse">
@@ -37,7 +40,7 @@
         v-if="item.idealAnswer"
         class="eval-item-card__section eval-item-card__section--ideal"
       >
-        <h4>정답 방향 · 정석 답변</h4>
+        <h4>정답 방향 · 예시 답변</h4>
         <p>{{ item.idealAnswer }}</p>
       </section>
     </div>
@@ -45,11 +48,29 @@
 </template>
 
 <script setup lang="ts">
+import { ElMessage } from 'element-plus';
+import { useSavedQuestionStore } from '@/features/saved-question';
 import type { EvaluationItem } from '../model/evaluation.types';
 
-defineProps<{
+const props = defineProps<{
   item: EvaluationItem;
 }>();
+
+const savedQuestionStore = useSavedQuestionStore();
+
+function saveQuestion() {
+  savedQuestionStore.addQuestion({
+    question: props.item.question,
+    answer: props.item.idealAnswer || props.item.feedback,
+    followUpQuestion: '이 답변을 더 보완한다면 어떤 점을 추가하시겠어요?',
+    followUpAnswer: props.item.improvements.join('\n'),
+    category: 'technical',
+    tags: ['보완 카드', `${props.item.totalScore}점`],
+    source: 'evaluation',
+  });
+
+  ElMessage.success('질문을 보관함에 저장했습니다.');
+}
 </script>
 
 <style lang="scss" scoped>
@@ -130,6 +151,12 @@ defineProps<{
         color: #1d4ed8;
       }
     }
+  }
+
+  &__save {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 10px;
   }
 
   &__answer-collapse {
@@ -270,6 +297,12 @@ defineProps<{
     &__left-column,
     &__section--ideal {
       overflow: visible;
+    }
+
+    &__save {
+      .el-button {
+        width: 100%;
+      }
     }
   }
 }

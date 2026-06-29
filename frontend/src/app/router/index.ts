@@ -62,6 +62,11 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/pages/InterviewHistoryPage.vue'),
       },
       {
+        path: 'saved-questions',
+        name: 'SavedQuestions',
+        component: () => import('@/pages/SavedQuestionsPage.vue'),
+      },
+      {
         path: 'evaluations/:sessionId',
         name: 'Evaluation',
         component: () => import('@/pages/EvaluationPage.vue'),

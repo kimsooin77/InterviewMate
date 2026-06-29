@@ -9,6 +9,7 @@
         <el-button text @click="navigateTo('/')">대시보드</el-button>
         <el-button text @click="navigateTo('/resumes/upload')">이력서</el-button>
         <el-button text @click="navigateTo('/interviews/history')">면접 기록</el-button>
+        <el-button text @click="navigateTo('/saved-questions')">질문 보관함</el-button>
         <span v-if="authStore.user?.name" class="app-layout__user">
           {{ authStore.user.name }}
         </span>
@@ -51,26 +52,26 @@
         <nav class="mobile-menu-list">
           <button type="button" @click="navigateTo('/')">
             <span class="mobile-menu-list__content">
-              <span class="mobile-menu-list__icon">
-                <el-icon><House /></el-icon>
-              </span>
+              <span class="mobile-menu-list__icon"><el-icon><House /></el-icon></span>
               <span>대시보드</span>
             </span>
           </button>
           <button type="button" @click="navigateTo('/resumes/upload')">
             <span class="mobile-menu-list__content">
-              <span class="mobile-menu-list__icon">
-                <el-icon><Document /></el-icon>
-              </span>
+              <span class="mobile-menu-list__icon"><el-icon><Document /></el-icon></span>
               <span>이력서</span>
             </span>
           </button>
           <button type="button" @click="navigateTo('/interviews/history')">
             <span class="mobile-menu-list__content">
-              <span class="mobile-menu-list__icon">
-                <el-icon><ChatLineRound /></el-icon>
-              </span>
+              <span class="mobile-menu-list__icon"><el-icon><ChatLineRound /></el-icon></span>
               <span>면접 기록</span>
+            </span>
+          </button>
+          <button type="button" @click="navigateTo('/saved-questions')">
+            <span class="mobile-menu-list__content">
+              <span class="mobile-menu-list__icon"><el-icon><Collection /></el-icon></span>
+              <span>질문 보관함</span>
             </span>
           </button>
         </nav>
@@ -78,9 +79,7 @@
         <div class="mobile-menu-logout-wrap">
           <button type="button" class="mobile-menu-logout" @click="handleLogout">
             <span class="mobile-menu-logout__content">
-              <span class="mobile-menu-list__icon">
-                <el-icon><SwitchButton /></el-icon>
-              </span>
+              <span class="mobile-menu-list__icon"><el-icon><SwitchButton /></el-icon></span>
               <span>로그아웃</span>
             </span>
           </button>
@@ -99,6 +98,7 @@ import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import {
   ChatLineRound,
+  Collection,
   Document,
   House,
   Menu,
@@ -253,9 +253,6 @@ function handleLogout() {
   min-height: 100%;
   flex-direction: column;
   padding: 0;
-  background:
-    linear-gradient(180deg, rgba(64, 158, 255, 0.1) 0%, rgba(64, 158, 255, 0) 150px),
-    #fff;
 }
 
 .mobile-menu-user-wrap {
@@ -263,10 +260,7 @@ function handleLogout() {
 }
 
 .mobile-menu-user {
-  border: 1px solid #d9ecff;
   border-radius: 10px;
-  background: #ecf5ff;
-  padding: 15px;
 }
 
 .mobile-menu-user__inner {

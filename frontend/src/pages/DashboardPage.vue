@@ -185,16 +185,16 @@ function openInterview(item: InterviewHistoryItem) {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 20px;
-    padding: 30px;
+    gap: 16px;
+    padding: 18px 20px;
     border: 1px solid #d9ecff;
-    border-radius: 12px;
+    border-radius: 10px;
     background: linear-gradient(135deg, #ecf5ff 0%, #ffffff 72%);
 
     h1 {
-      margin: 8px 0;
+      margin: 5px 0 4px;
       color: #172554;
-      font-size: 28px;
+      font-size: 23px;
       line-height: 1.25;
     }
 
@@ -202,7 +202,8 @@ function openInterview(item: InterviewHistoryItem) {
       max-width: 620px;
       margin: 0;
       color: #536276;
-      line-height: 1.6;
+      font-size: 13px;
+      line-height: 1.45;
     }
   }
 
@@ -215,7 +216,7 @@ function openInterview(item: InterviewHistoryItem) {
   &__eyebrow,
   &__section-label {
     color: #409eff;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 800;
     letter-spacing: 0.04em;
   }
@@ -223,8 +224,8 @@ function openInterview(item: InterviewHistoryItem) {
   &__stats {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 14px;
-    margin-top: 18px;
+    gap: 8px;
+    margin-top: 10px;
   }
 
   &__stat,
@@ -237,18 +238,23 @@ function openInterview(item: InterviewHistoryItem) {
   }
 
   &__stat {
-    padding: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 10px 12px;
 
     span {
       color: #7a8699;
-      font-size: 13px;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
     }
 
     strong {
       display: block;
-      margin-top: 8px;
       color: #1f2a44;
-      font-size: 28px;
+      font-size: 20px;
       line-height: 1;
     }
   }
@@ -258,8 +264,8 @@ function openInterview(item: InterviewHistoryItem) {
     align-items: center;
     justify-content: space-between;
     gap: 16px;
-    margin-top: 18px;
-    padding: 20px;
+    margin-top: 12px;
+    padding: 16px;
 
     h2 {
       margin: 6px 0;
@@ -276,8 +282,8 @@ function openInterview(item: InterviewHistoryItem) {
   &__grid {
     display: grid;
     grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.8fr);
-    gap: 18px;
-    margin-top: 18px;
+    gap: 14px;
+    margin-top: 14px;
   }
 
   &__panel {
@@ -378,7 +384,7 @@ function openInterview(item: InterviewHistoryItem) {
 
 @media (max-width: 760px) {
   .dashboard-page {
-    padding: 12px 0;
+    padding: 8px 0;
 
     &__hero,
     &__continue,
@@ -393,24 +399,47 @@ function openInterview(item: InterviewHistoryItem) {
     }
 
     &__hero {
-      padding: 22px 18px;
+      gap: 12px;
+      padding: 12px 14px;
 
       h1 {
-        font-size: 24px;
+        font-size: 20px;
+      }
+
+      p {
+        font-size: 12px;
+        line-height: 1.4;
       }
     }
 
     &__hero-actions {
       flex-direction: column;
+
+      .el-button {
+        min-height: 34px;
+      }
     }
 
-    &__stats,
     &__grid {
       grid-template-columns: 1fr;
     }
 
     &__stats {
-      gap: 10px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    &__stat {
+      padding: 8px 10px;
+
+      span {
+        font-size: 11px;
+      }
+
+      strong {
+        font-size: 18px;
+      }
     }
 
     &__recent-item,
