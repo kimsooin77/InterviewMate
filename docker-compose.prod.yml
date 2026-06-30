@@ -18,9 +18,7 @@ services:
       - interviewmate
 
   backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    image: ${CI_REGISTRY_IMAGE:?CI_REGISTRY_IMAGE is required}/backend:${IMAGE_TAG:-latest}
     container_name: interviewmate-backend
     restart: unless-stopped
     environment:
@@ -51,11 +49,7 @@ services:
       - interviewmate
 
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      args:
-        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api/v1}
+    image: ${CI_REGISTRY_IMAGE:?CI_REGISTRY_IMAGE is required}/frontend:${IMAGE_TAG:-latest}
     container_name: interviewmate-frontend
     restart: unless-stopped
     depends_on:

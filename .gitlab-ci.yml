@@ -1,0 +1,53 @@
+stages:
+  - build
+  - deploy
+
+variables:
+  DOCKER_HOST: tcp://docker:2375
+  DOCKER_DRIVER: overlay2
+  DOCKER_TLS_CERTDIR: ""
+  VITE_API_BASE_URL: "/api/v1"
+
+.docker_build:
+  image: docker:24
+  services:
+    - docker:24-dind
+  before_script:
+    - printf "%s" "$CI_REGISTRY_PASSWORD" | docker login "$CI_REGISTRY" -u "$CI_REGISTRY_USER" --password-stdin
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+
+build_backend:
+  extends: .docker_build
+  stage: build
+  script:
+    - docker build -t "$CI_REGISTRY_IMAGE/backend:latest" -t "$CI_REGISTRY_IMAGE/backend:$CI_COMMIT_SHORT_SHA" ./backend
+    - docker push "$CI_REGISTRY_IMAGE/backend:latest"
+    - docker push "$CI_REGISTRY_IMAGE/backend:$CI_COMMIT_SHORT_SHA"
+
+build_frontend:
+  extends: .docker_build
+  stage: build
+  script:
+    - docker build --build-arg VITE_API_BASE_URL="$VITE_API_BASE_URL" -t "$CI_REGISTRY_IMAGE/frontend:latest" -t "$CI_REGISTRY_IMAGE/frontend:$CI_COMMIT_SHORT_SHA" ./frontend
+    - docker push "$CI_REGISTRY_IMAGE/frontend:latest"
+    - docker push "$CI_REGISTRY_IMAGE/frontend:$CI_COMMIT_SHORT_SHA"
+
+deploy_production:
+  image: alpine:3.20
+  stage: deploy
+  needs:
+    - build_backend
+    - build_frontend
+  before_script:
+    - apk add --no-cache openssh-client
+    - mkdir -p ~/.ssh
+    - printf "%s" "$EC2_SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/id_rsa
+    - chmod 600 ~/.ssh/id_rsa
+    - ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts
+  script:
+    - ssh "$EC2_USER@$EC2_HOST" "cd '$EC2_APP_DIR' && git fetch origin && git checkout main && git pull origin main"
+    - printf "%s" "$CI_REGISTRY_PASSWORD" | ssh "$EC2_USER@$EC2_HOST" "docker login '$CI_REGISTRY' -u '$CI_REGISTRY_USER' --password-stdin"
+    - ssh "$EC2_USER@$EC2_HOST" "cd '$EC2_APP_DIR' && docker compose -f docker-compose.prod.yml --env-file .env.production pull && docker compose -f docker-compose.prod.yml --env-file .env.production up -d"
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
